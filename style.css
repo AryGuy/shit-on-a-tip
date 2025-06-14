@@ -61,3 +61,27 @@ button:active {
 button.clicked {
   animation: bounceClick 0.2s ease;
 }
+.achievement-popup {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.85);
+  color: #ffe082;
+  border: 2px solid #ba732a;
+  padding: 16px 24px;
+  border-radius: 10px;
+  font-size: 1.1rem;
+  font-family: 'Oswald', sans-serif;
+  box-shadow: 0 0 10px #ba732a, 0 0 20px #fff3;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.4s ease;
+  z-index: 9999;
+}
+
+.achievement-popup.show {
+  opacity: 1;
+  pointer-events: auto;
+  top: 60px;
+}

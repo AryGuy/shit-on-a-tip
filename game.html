@@ -30,7 +30,10 @@
   </div>
 
   <audio id="clap-sound" src="clap.mp3" preload="auto"></audio>
-<audio id="alert-sound" src="alert.mp3" preload="auto"></audio>
+  <audio id="alert-sound" src="alert.mp3" preload="auto"></audio>
+  <audio id="achievement-sound" src="achievement.mp3" preload="auto"></audio>
+    
+  <div id="achievement-popup" class="achievement-popup"></div>
 
 <script>
   const profiles = [
@@ -90,7 +93,25 @@ function unlockAchievement(id) {
   if (!achievements[id]) {
     achievements[id] = true;
     localStorage.setItem("achievements", JSON.stringify(achievements));
-    alert(`🎉 Achievement Unlocked: ${achievementList[id].name}\n${achievementList[id].description}`);
+    
+    const popup = document.getElementById("achievement-popup");
+    popup.innerHTML = `<strong>🎉 ${achievementList[id].name}</strong><br>${achievementList[id].description}`;
+    popup.classList.add("show");
+      
+      
+  // 🎵 Play sound at random pitch
+  const achievementSound = document.getElementById("achievement-sound");
+  achievementSound.pause();
+  achievementSound.currentTime = 0;
+  achievementSound.playbackRate = Math.random() * 1.5 + 0.25;
+  achievementSound.play();
+      
+    document.getElementById("achievement-sound").play();
+    
+     setTimeout(() => {
+     popup.classList.remove("show");
+    }, 4000); // hide after 4 seconds
+ 
   }
 }
 
