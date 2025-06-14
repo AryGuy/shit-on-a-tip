@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Select Your 3 Targets</title>
+  <style>
+  body {
+    font-family: sans-serif;
+    background-color: #111;
+    color: white;
+    text-align: center;
+    padding: 30px;
+  }
+  h1 {
+    font-size: 2em;
+    margin-bottom: 20px;
+  }
+  .character-list button {
+    margin: 5px;
+    padding: 10px 15px;
+    font-size: 16px;
+    cursor: pointer;
+    border-radius: 8px;
+    border: none;
+    background-color: #444;
+    color: white;
+    transition: filter 0.2s ease; /* smooth desaturation */
+  }
+  .character-list button:hover {
+    filter: saturate(85%); /* hover effect here */
+  }
+  .character-list button.selected {
+    background-color: #332925;
+  }
+  #start-btn {
+    margin-top: 30px;
+    padding: 15px 30px;
+    font-size: 18px;
+    background: #ba732a;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+  }
+</style>
+</head>
+<body>
+  <h1>Choose Your 3 Fine Shyt</h1>
+  <div class="character-list" id="character-buttons"></div>
+  <button id="start-btn" disabled>Start Game</button>
+  
+  <p style="margin-top: 20px; font-size: 1.2rem;">
+    High Score: <span id="high-score">0</span>
+  </p>
+
+  <button onclick="location.href='index.html'" style="margin-top: 20px; padding: 10px 20px; font-size: 16px; border: none; border-radius: 8px; background-color: #555; color: white; cursor: pointer;">
+    Return to Main Menu
+  </button>
+
+  <script>
+    const profiles = [
+      "Zewonie", "Dennis", "Iqnore", "Hieu", "Edd", "Win", "Kai",
+      "Ary", "Matt", "Sai", "Zhiynl", "Andy", "Mido"
+    ];
+
+    const selected = [];
+    const buttonContainer = document.getElementById('character-buttons');
+    const startBtn = document.getElementById('start-btn');
+
+    profiles.forEach(name => {
+      const btn = document.createElement("button");
+      btn.textContent = name;
+      btn.addEventListener("click", () => {
+        if (selected.includes(name)) {
+          selected.splice(selected.indexOf(name), 1);
+          btn.classList.remove("selected");
+        } else if (selected.length < 3) {
+          selected.push(name);
+          btn.classList.add("selected");
+        }
+
+        startBtn.disabled = selected.length !== 3;
+      });
+      buttonContainer.appendChild(btn);
+    });
+
+    startBtn.addEventListener("click", () => {
+      sessionStorage.setItem("chosenTargets", JSON.stringify(selected));
+      window.location.href = "game.html";
+    });
+
+    // Show high score
+    const highScore = localStorage.getItem("highScore") || 0;
+    document.getElementById("high-score").textContent = highScore;
+  </script>
+</body>

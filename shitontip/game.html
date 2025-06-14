@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Game - Shit on Your Tip</title>
+  <style>
+      .profile.selected {
+  border: 3px solid yellow;
+}
+    body {
+      background: #111;
+      color: #fff;
+      font-family: sans-serif;
+      text-align: center;
+      padding-top: 30px;
+    }
+    #score {
+      font-size: 1.5rem;
+      margin-bottom: 20px;
+    }
+    .game-container {
+      display: flex;
+      justify-content: center;
+      gap: 50px;
+      margin-bottom: 30px;
+    }
+    .profile {
+      width: 150px;
+      height: 150px;
+      background-color: #444;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.2rem;
+      border-radius: 10px;
+    }
+    .buttons {
+      margin-bottom: 20px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 1rem;
+      margin: 5px;
+      cursor: pointer;
+      border-radius: 8px;
+      border: none;
+    }
+    #slot-select {
+      margin-bottom: 15px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Shit on Your Tip or Tip on Your Shit</h1>
+  <div id="chosen-targets">
+  <strong>Chosen Fine Shyts:</strong> <span id="targets-display">Loading...</span>
+</div>
+
+  <div id="score">Score: 0</div>
+
+  <div class="game-container">
+    <div class="profile" id="left-slot">❓</div>
+    <div class="profile" id="right-slot">❓</div>
+  </div>
+
+  <div class="buttons">
+    <div id="slot-select">
+      <button id="choose-left">Choose Left Slot</button>
+      <button id="choose-right">Choose Right Slot</button>
+    </div>
+    <button id="clap-btn" disabled>Clap</button>
+    
+    <p id="reveal-count">Reveals left: 3</p>
+    <button id="reveal-btn" disabled>Reveal Slot</button>
+  </div>
+
+  <audio id="clap-sound" src="clap.mp3" preload="auto"></audio>
+<audio id="alert-sound" src="alert.mp3" preload="auto"></audio>
+
+<script>
+  const profiles = [
+    { name: "Zewonie", isSTD: false },
+    { name: "Dennis", isSTD: false },
+    { name: "Iqnore", isSTD: false },
+    { name: "Hieu", isSTD: false },
+    { name: "Edd", isSTD: false },
+    { name: "Win", isSTD: false },
+    { name: "Kai", isSTD: false },
+    { name: "Ary", isSTD: false },
+    { name: "Matt", isSTD: false },
+    { name: "Mido", isSTD: false },
+    { name: "Sai", isSTD: false },
+    { name: "Zhiynl", isSTD: false },
+    { name: "Andy", isSTD: false },
+    { name: "Lucy", isSTD: true },
+    { name: "Sans", isSTD: true }
+  ];
+
+  const clapSound = document.getElementById("clap-sound");
+  const alertSound = document.getElementById("alert-sound");
+    
+  let revealUses = 3;
+  const revealBtn = document.getElementById("reveal-btn");
+  const revealCountDisplay = document.getElementById("reveal-count");
+    
+  function updateRevealCount() {
+  revealCountDisplay.textContent = `Reveals left: ${revealUses}`;
+  revealBtn.disabled = revealUses <= 0 || !selectedSlot;
+}
+
+  const chosenTargets = JSON.parse(sessionStorage.getItem("chosenTargets") || "[]");
+  document.getElementById("targets-display").textContent = chosenTargets.join(", ");
+  let score = 0;
+
+    let achievements = JSON.parse(localStorage.getItem("achievements") || "{}");
+let clapCounts = {}; // Track how many times each character is clapped this run
+
+const achievementList = {
+  clappedDennis: { name: "I'M HYPERFOLDING IT", description: "Clap Dennis 10 times in one game" },
+  clappedAndy: { name: "The Goondy", description: "Clap Andy 10 times in one game" },
+  clappedKai: { name: "Big Black Japanese Man", description: "Clap Kai 10 times in one game" },
+  clappedSai: { name: "Amogus Sex Plushie", description: "Clap Sai 10 times in one game" },
+  clappedMatt: { name: "Monster Energy Lube", description: "Clap Matt 10 times in one game" },
+  clappedZewonie: { name: "Quite Possibly My Biggest 'Hear Me Out'", description: "Clap Kj 10 times in one game" },
+  clappedIqnore: { name: "I'm Saving This Shit To My Gallery", description: "Clap Iqnore 10 times in one game" },
+  clappedZhiynl: { name: "DRINK THE PEE NOW NOWWWWW", description: "Clap Zhiynl 10 times in one game" },
+  clappedAry: { name: "On Some Mood", description: "Clap Ary 10 times in one game" },
+  clappedEdd: { name: "His Mother Is Still Better", description: "Clap Edd 10 times in one game" },
+  clappedWin: { name: "First One To Fall Asleep In The Sleepover", description: "Clap Win 10 times in one game" },
+  clappedHieu: { name: "Only Ethical Gooning 😡", description: "Clap Hieu 10 times in one game" },
+  clappedMido: { name: "Necrophiliac", description: "Clap Mido 10 times in one game" }
+};
+
+function unlockAchievement(id) {
+  if (!achievements[id]) {
+    achievements[id] = true;
+    localStorage.setItem("achievements", JSON.stringify(achievements));
+    alert(`🎉 Achievement Unlocked: ${achievementList[id].name}\n${achievementList[id].description}`);
+  }
+}
+
+
+  let leftProfile, rightProfile;
+  let selectedSlot = null;
+  let hasClapped = false;
+
+
+  const scoreDisplay = document.getElementById("score");
+  const leftDiv = document.getElementById("left-slot");
+  const rightDiv = document.getElementById("right-slot");
+  const clapBtn = document.getElementById("clap-btn");
+    
+  function highlightSlot(slot) {
+  if (slot === "left") {
+    leftDiv.classList.add("selected");
+    rightDiv.classList.remove("selected");
+  } else {
+    rightDiv.classList.add("selected");
+    leftDiv.classList.remove("selected");
+  }
+}
+
+  function getRandomProfile() {
+    return Math.random() < 0.15
+      ? (Math.random() < 0.5
+        ? { name: "Lucy", isSTD: true }
+        : { name: "Sans", isSTD: true })
+      : profiles.filter(p => !p.isSTD)[Math.floor(Math.random() * 13)];
+  }
+
+  function resetRound() {
+  // Loop until at least one safe profile is selected
+  do {
+    leftProfile = getRandomProfile();
+    rightProfile = getRandomProfile();
+  } while (leftProfile.isSTD && rightProfile.isSTD);
+
+  leftDiv.textContent = "🗣❓";
+  rightDiv.textContent = "🗣❓";
+  selectedSlot = null;
+  clapBtn.disabled = true;
+  hasClapped = false;
+  leftDiv.classList.remove("selected");
+  rightDiv.classList.remove("selected");
+    
+  updateRevealCount();
+}
+
+
+ function updateScore() {
+  scoreDisplay.textContent = `Score: ${score}`;
+
+  // Update high score if needed
+  const currentHigh = localStorage.getItem("highScore") || 0;
+  if (score > currentHigh) {
+    localStorage.setItem("highScore", score);
+  }
+}
+
+  function gameOver() {
+    alertSound.play();
+    sessionStorage.setItem("lastScore", score);
+    setTimeout(() => {
+      window.location.href = "gameover.html";
+    }, 1000);
+  }
+
+  document.getElementById("choose-left").addEventListener("click", () => {
+  selectedSlot = "left";
+  clapBtn.disabled = false;
+  highlightSlot("left");
+  updateRevealCount(); // <-- Add this line
+});
+
+  document.getElementById("choose-right").addEventListener("click", () => {
+  selectedSlot = "right";
+  clapBtn.disabled = false;
+  highlightSlot("right");
+  updateRevealCount(); // <-- Add this line
+});
+
+
+clapBtn.addEventListener("click", () => {
+  if (hasClapped) return; 
+  hasClapped = true;
+  
+  let chosen = selectedSlot === "left" ? leftProfile : rightProfile;
+  if (selectedSlot === "left") {
+    leftDiv.textContent = chosen.name;
+  } else {
+    rightDiv.textContent = chosen.name;
+  }
+  
+  setTimeout(() => {
+    if (selectedSlot === "left") {
+      rightDiv.textContent = rightProfile.name;
+    } else {
+      leftDiv.textContent = leftProfile.name;
+    }
+  }, 300);
+
+  if (chosen.isSTD) {
+    gameOver();
+    return;
+  }
+
+  clapSound.play();
+  score += chosenTargets.includes(chosen.name) ? 2 : 1;
+  clapCounts[chosen.name] = (clapCounts[chosen.name] || 0) + 1;
+  const key = "clapped" + chosen.name;
+  if (clapCounts[chosen.name] === 10 && achievementList[key]) {
+    unlockAchievement(key);
+  }
+
+  updateScore();
+
+  setTimeout(() => {
+    resetRound();
+  }, 1000);
+});
+
+revealBtn.addEventListener("click", () => {
+  if (!selectedSlot || revealUses <= 0) return;
+
+  const chosen = selectedSlot === "left" ? leftProfile : rightProfile;
+  if (selectedSlot === "left") {
+    leftDiv.textContent = chosen.name;
+  } else {
+    rightDiv.textContent = chosen.name;
+  }
+
+  revealUses--;
+  updateRevealCount();
+});
+    
+  // Init
+  updateScore();
+  resetRound();
+</script>
+</body>
+</html>
+
