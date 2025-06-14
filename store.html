@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Ts Hella Dusty</title>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    body {
+      background-color: #000;
+      color: white;
+      font-family: 'Press Start 2P', cursive;
+      text-align: center;
+      padding: 40px;
+      overflow-x: hidden;
+    }
+
+    h1 {
+      font-size: 20px;
+      margin-bottom: 30px;
+    }
+
+    #coin-display {
+      margin-bottom: 30px;
+      font-size: 12px;
+    }
+
+    button {
+      display: block;
+      margin: 10px auto;
+      background: #222;
+      color: white;
+      border: 2px solid white;
+      padding: 12px;
+      font-size: 10px;
+      cursor: pointer;
+    }
+
+    button:disabled {
+      color: gray;
+      border-color: gray;
+      cursor: not-allowed;
+    }
+
+    #feedback {
+      margin-top: 30px;
+      min-height: 40px;
+      transition: opacity 0.3s;
+    }
+
+    .fade-out {
+      opacity: 0;
+    }
+
+    #milk-effect {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  width: 200px;
+  height: 200px;
+  transform: translate(-50%, -50%);
+  z-index: 9999;
+  display: none;
+  animation: milkJumpscare 0.8s ease-out forwards;
+}
+
+@keyframes milkJumpscare {
+  0% {
+    transform: translate(-50%, -50%) scale(0.1) rotate(0deg);
+    opacity: 0;
+  }
+  10% {
+    opacity: 1;
+  }
+  25% {
+    transform: translate(-50%, -50%) scale(1.6) rotate(5deg);
+  }
+  35% {
+    transform: translate(-50%, -50%) scale(1.5) rotate(-5deg);
+  }
+  45% {
+    transform: translate(-50%, -50%) scale(1.7) rotate(5deg);
+  }
+  60% {
+    transform: translate(-50%, -50%) scale(1.3) rotate(0deg);
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(0) rotate(0deg);
+    opacity: 0;
+  }
+}
+  </style>
+</head>
+<body>
+
+  <audio id="store-music" src="assets/shop-theme.mp3" loop></audio>
+
+  <div id="coin-display">🪙 COINS: <span id="coin-count">0</span></div>
+  <div id="store-items"></div>
+  <div id="feedback"></div>
+  <button onclick="goBack()">← BACK TO SHOP</button>
+
+  <!-- 🥛 Milk effect image -->
+  <img id="milk-effect" src="assets/milk.png" alt="Glass of Milk" />
+
+  <script>
+    const items = [
+      { name: "Glass of Milk", cost: 30, id: "milk" },
+      { name: "M4A1 (Coming Soon)", cost: 999, id: "m4a1", comingSoon: true },
+      { name: "Zhiynl NFT (Useless)", cost: 999, id: "nft" }
+    ];
+
+    const coinSpan = document.getElementById("coin-count");
+    const feedback = document.getElementById("feedback");
+    const itemContainer = document.getElementById("store-items");
+    const milkEffect = document.getElementById("milk-effect");
+
+    let userCoins = parseInt(localStorage.getItem("coins")) || 0;
+    coinSpan.textContent = userCoins;
+
+    function playMilkAnimation() {
+  milkEffect.style.display = "block";
+  milkEffect.style.animation = "none";
+  void milkEffect.offsetWidth; // Force reflow
+  milkEffect.style.animation = "milkJumpscare 0.8s ease-out forwards";
+
+  setTimeout(() => {
+    milkEffect.style.display = "none";
+  }, 800);
+}
+
+    function buyItem(item) {
+      feedback.classList.remove("fade-out");
+
+      if (item.comingSoon) {
+        feedback.innerText = `This item ain't ready yet. Go touch grass.`;
+        return;
+      }
+
+      if (userCoins >= item.cost) {
+        userCoins -= item.cost;
+        localStorage.setItem("coins", userCoins);
+        coinSpan.textContent = userCoins;
+        feedback.innerText = `You bought ${item.name}. Coins left: ${userCoins}`;
+
+        // Special item effect
+        if (item.id === "milk") playMilkAnimation();
+      } else {
+        feedback.innerText = `BROKE ASS BITCH, YOU NEED ${item.cost - userCoins} MORE.`;
+      }
+
+      setTimeout(() => {
+        feedback.classList.add("fade-out");
+      }, 1000);
+    }
+
+    function renderStore() {
+      items.forEach(item => {
+        const btn = document.createElement("button");
+        btn.textContent = `${item.name} - ${item.cost} coins`;
+        if (item.comingSoon) btn.disabled = true;
+        btn.onclick = () => buyItem(item);
+        itemContainer.appendChild(btn);
+      });
+    }
+
+    function goBack() {
+      window.location.href = "shop.html";
+    }
+
+    renderStore();
+  </script>
+
+  <script>
+    const music = document.getElementById("store-music");
+
+    document.addEventListener("click", () => {
+      const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      const source = audioCtx.createMediaElementSource(music);
+      const lowpass = audioCtx.createBiquadFilter();
+
+      lowpass.type = "lowpass";
+      lowpass.frequency.setValueAtTime(400, audioCtx.currentTime); // muffled
+
+      source.connect(lowpass);
+      lowpass.connect(audioCtx.destination);
+
+      const resumeTime = sessionStorage.getItem("musicTime");
+      if (resumeTime) {
+        music.currentTime = parseFloat(resumeTime);
+      }
+
+      music.volume = 0.3;
+      music.play().catch(err => console.warn("Audio play blocked:", err));
+    }, { once: true });
+  </script>
+</body>
+</html>

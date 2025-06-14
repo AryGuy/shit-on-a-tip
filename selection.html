@@ -1,15 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Select Your 3 Targets</title>
-  <link href="https://fonts.googleapis.com/css2?family=Oswald&display=swap" rel="stylesheet">
-   <link rel="stylesheet" href="selection.css">
+  <title>Fine Shyt Selection</title>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="selection.css">
 </head>
 
 <body>
   <h1>Choose Your 3 Fine Shyt</h1>
-  <div class="character-list" id="character-buttons"></div>
+  <div id="coin-display">🪙 Coins: <span id="coin-count">0</span></div>
+  <div id="carousel-container">
+    <button id="left-arrow">&lt;</button>
+    <img id="character-image" src="" alt="Character Image">
+    <button id="right-arrow">&gt;</button>
+  </div>
+
+  <h2 id="character-name">Character Name</h2>
+  <button id="select-btn">Select This Shyt</button>
+
+  <p>Chosen: <span id="chosen-count">0</span>/3</p>
+  <ul id="chosen-list"></ul>
+
   <button id="start-btn" disabled>Start Game</button>
-  
+
   <p style="margin-top: 20px; font-size: 1.2rem;">
     High Score: <span id="high-score">0</span>
   </p>
@@ -20,38 +34,78 @@
 
   <script>
     const profiles = [
-      "Zewonie", "Dennis", "Iqnore", "Hieu", "Edd", "Win", "Kai",
-      "Ary", "Matt", "Sai", "Zhiynl", "Andy", "Mido"
+      { name: "Zewonie", img: "assets/Zewonie.png" },
+      { name: "Dennis", img: "assets/Dennis.png" },
+      { name: "Iqnore", img: "assets/Iqnore.png" },
+      { name: "Hieu", img: "assets/Hieu.png" },
+      { name: "Edd", img: "assets/Edd.png" },
+      { name: "Win", img: "assets/Win.png" },
+      { name: "Kai", img: "assets/Kai.png" },
+      { name: "Ary", img: "assets/Ary.png" },
+      { name: "Matt", img: "assets/Matt.png" },
+      { name: "Sai", img: "assets/Sai.png" },
+      { name: "Zhiynl", img: "assets/Zhiynl.png" },
+      { name: "Andy", img: "assets/Andy.png" },
+      { name: "Mido", img: "assets/Mido.png" }
     ];
 
-    const selected = [];
-    const buttonContainer = document.getElementById('character-buttons');
+    let currentIndex = 0;
+    let selected = [];
+
+    sessionStorage.removeItem("coinsRewarded");
+
+    const nameEl = document.getElementById('character-name');
+    const imgEl = document.getElementById('character-image');
+    const chosenCount = document.getElementById('chosen-count');
+    const chosenList = document.getElementById('chosen-list');
     const startBtn = document.getElementById('start-btn');
 
-    profiles.forEach(name => {
-      const btn = document.createElement("button");
-      btn.textContent = name;
-      btn.addEventListener("click", () => {
-        if (selected.includes(name)) {
-          selected.splice(selected.indexOf(name), 1);
-          btn.classList.remove("selected");
-        } else if (selected.length < 3) {
-          selected.push(name);
-          btn.classList.add("selected");
-        }
+    function updateDisplay() {
+      const current = profiles[currentIndex];
+      nameEl.textContent = current.name;
+      imgEl.src = current.img;
+    }
 
-        startBtn.disabled = selected.length !== 3;
-      });
-      buttonContainer.appendChild(btn);
+    document.getElementById('left-arrow').addEventListener('click', () => {
+      currentIndex = (currentIndex - 1 + profiles.length) % profiles.length;
+      updateDisplay();
     });
 
-    startBtn.addEventListener("click", () => {
+    document.getElementById('right-arrow').addEventListener('click', () => {
+      currentIndex = (currentIndex + 1) % profiles.length;
+      updateDisplay();
+    });
+
+    document.getElementById('select-btn').addEventListener('click', () => {
+      const current = profiles[currentIndex];
+      if (selected.includes(current.name)) return;
+
+      if (selected.length < 3) {
+        selected.push(current.name);
+        const li = document.createElement('li');
+        li.textContent = current.name;
+        chosenList.appendChild(li);
+        chosenCount.textContent = selected.length;
+      }
+
+      startBtn.disabled = selected.length !== 3;
+    });
+
+    startBtn.addEventListener('click', () => {
       sessionStorage.setItem("chosenTargets", JSON.stringify(selected));
       window.location.href = "game.html";
     });
 
-    // Show high score
+    // Load high score
     const highScore = localStorage.getItem("highScore") || 0;
     document.getElementById("high-score").textContent = highScore;
+
+    // Initial display
+    updateDisplay();
   </script>
+    <script>
+  const coinCount = localStorage.getItem("coins") || 0;
+  document.getElementById("coin-count").textContent = coinCount;
+</script>
 </body>
+</html>

@@ -1,56 +1,85 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Game Over</title>
-  <link href="https://fonts.googleapis.com/css2?family=Oswald&display=swap" rel="stylesheet">
+  <meta charset="UTF-8" />
+  <title>NNNNNOOOOOOOOOOOO</title>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
   <style>
     body {
-      background: #111;
+      background-color: #000;
       color: #fff;
-      font-family: 'Luckiest Guy', cursive;
+      font-family: 'Press Start 2P', cursive;
       text-align: center;
-      padding-top: 100px;
+      margin: 0;
+      padding-top: 150px;
     }
     h1 {
-      font-size: 2em;
-      margin-bottom: 20px;
+      font-size: 80px;
+      line-height: 1.1;
+      margin: 0 20px 40px;
+      user-select: none;
+    }
+    p {
+      font-size: 16px;
+      margin-bottom: 40px;
+      color: #ff0000;
+      user-select: none;
+    }
+    #final-score {
+      color: #ff0000;
     }
     button {
-      padding: 15px 30px;
-      font-size: 1.2em;
+      font-family: 'Press Start 2P', cursive;
+      padding: 15px 40px;
+      font-size: 14px;
       background: #ba732a;
       border: none;
-      color: white;
-      border-radius: 8px;
+      color: black;
       cursor: pointer;
+      border-radius: 0;
+      transition: background 0.2s ease;
+      user-select: none;
+    }
+    button:hover {
+      background: #ffbe4d;
+    }
+    audio {
+      display: none;
     }
   </style>
 </head>
 <body>
-  <h1>YOU GOT SHIT ON YOUR DICK NOOOOO </h1>
-  <p>Final Score: <span id="final-score">0</span></p>
-  <button onclick="location.href='selection.html'">Try Again?</button>
+  <h1>YOU GOT SHIT ON<br>YOUR DICK NNNNNOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOONOOOO</h1>
+  <p>FINAL SCORE: <span id="final-score">0</span></p>
+  <button onclick="location.href='selection.html'">Try again?</button>
 
   <audio id="moyai-sound" src="moyai.mp3" preload="auto"></audio>
 
   <script>
-    const score = sessionStorage.getItem('lastScore') || 0;
-    document.getElementById('final-score').textContent = score;
+  const score = sessionStorage.getItem('lastScore') || 0;
+  document.getElementById('final-score').textContent = score;
 
-    window.addEventListener('load', () => {
-      const moyai = document.getElementById('moyai-sound');
-      moyai.volume = 0.7;
+  // Prevent double rewards using session flag
+  const alreadyRewarded = sessionStorage.getItem("coinsRewarded");
+  if (!alreadyRewarded) {
+    let coins = parseInt(localStorage.getItem("coins")) || 0;
+    coins += parseInt(score);
+    localStorage.setItem("coins", coins);
+    sessionStorage.setItem("coinsRewarded", "true"); // mark rewarded
+  }
 
-      moyai.play().catch(() => {
-        console.warn("Autoplay blocked. Waiting for user interaction...");
-        const tryPlay = () => {
-          moyai.play();
-          document.removeEventListener("click", tryPlay);
-        };
-        document.addEventListener("click", tryPlay);
-      });
+  // Play moyai scream
+  window.addEventListener('load', () => {
+    const moyai = document.getElementById('moyai-sound');
+    moyai.volume = 0.7;
+    moyai.play().catch(() => {
+      const tryPlay = () => {
+        moyai.play();
+        document.removeEventListener("click", tryPlay);
+      };
+      document.addEventListener("click", tryPlay);
     });
-  </script>
+  });
+</script>
 </body>
 </html>

@@ -1,0 +1,159 @@
+body {
+  background-color: #111;
+  color: white;
+  font-family: monospace;
+  text-align: center;
+  padding: 20px;
+}
+#zhiynl-container img {
+  position: relative;
+  width: 170px;
+  top: 60px;
+  bottom: 15px;
+  image-rendering: pixelated; /* keeps the 8-bit vibe */
+  z-index: 2;
+}
+
+.shop-container {
+  border: 3px solid white;
+  padding: 40px;
+  margin: 40px auto;
+  max-width: 700px;
+  position: relative;
+  background-color: #111;
+}
+
+#zhiynl-sprite {
+  position: absolute;
+  top: 0;    /* distance from top of the container */
+  right: 0;  /* stick to top-right corner of container */
+  width: 200px;
+  height: auto;
+  image-rendering: pixelated;
+  mix-blend-mode: lighten;
+  transform-origin: center;
+  transition: transform 0.3s ease;
+}
+
+#zhiynl-dialogue {
+  font-family: 'Press Start 2P', cursive;
+  font-size: 11px;
+  color: white;
+  background: #111;
+  padding: 16px;
+  white-space: pre-wrap;
+  min-height: 100px;
+  margin-top: 60px;
+  text-shadow:
+    -1px -1px 0 black,
+     1px -1px 0 black,
+    -1px  1px 0 black,
+     1px  1px 0 black;
+}
+body {
+  background-image: url('assets/pixel-tile.png');
+  background-repeat: repeat;
+  image-rendering: pixelated;
+}
+#exit-btn {
+  position: fixed;
+  top: 50px;
+  right: 10px;
+  font-size: 10px;
+  background: white;
+  color: black;
+  font-family: 'Press Start 2P', cursive;
+  padding: 6px 8px;
+  border: 2px solid black;
+  cursor: pointer;
+  z-index: 999;
+}
+#coin-display {
+  font-family: 'Press Start 2P', cursive;
+  color: #ffeb3b;
+  font-size: 12px;
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  text-shadow: 1px 1px black;
+}
+#talk-btn {
+  margin-top: 20px;
+  padding: 12px 24px;
+  background-color: #222;
+  color: white;
+  border: 2px solid white;
+  font-family: 'Press Start 2P', cursive;
+  font-size: 10px;
+  cursor: pointer;
+  display: block;
+  margin-left: auto;
+  margin-right: auto;
+  transition: background 0.2s ease;
+}
+
+#talk-btn:hover {
+  background-color: #444;
+}
+
+button:hover {
+  background-color: #333;
+}
+@keyframes spinny {
+  0% { transform: rotate(0deg); }
+  25% { transform: rotate(30deg); }
+  50% { transform: rotate(-30deg); }
+  75% { transform: rotate(720deg); }
+  100% { transform: rotate(0deg); }
+}
+
+.spin-glitch {
+  animation: spinny 1.5s ease-in-out;
+}
+#back-btn {
+  display: block;
+  margin: 16px auto 0;
+  font-family: 'Press Start 2P', cursive;
+  font-size: 10px;
+  background: #444;
+  color: white;
+  border: 1px solid white;
+  padding: 10px;
+  cursor: pointer;
+}
+#back-btn {
+  display: block;
+  margin: 16px auto 0;
+  font-family: 'Press Start 2P', cursive;
+  font-size: 10px;
+  background: #444;
+  color: white;
+  border: 1px solid white;
+  padding: 10px;
+  cursor: pointer;
+}
+#open-store-btn {
+  display: block;
+  margin: 12px auto;
+  font-family: 'Press Start 2P', cursive;
+  font-size: 10px;
+  background: #222;
+  color: white;
+  border: 1px solid white;
+  cursor: pointer;
+  padding: 8px 12px;
+  transition: background 0.2s;
+}
+.fade-out {
+  animation: fadeOut 1.2s forwards;
+}
+
+@keyframes fadeOut {
+  to {
+    opacity: 0;
+  }
+}
+
+#open-store-btn:hover {
+  background: #333;
+}

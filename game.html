@@ -4,6 +4,20 @@
   <meta charset="UTF-8">
   <title>Game - Shit on Your Tip</title>
   <link rel="stylesheet" href="style.css">
+    <style>
+  @keyframes screen-shake {
+    0% { transform: translate(0); }
+    20% { transform: translate(-5px, 5px); }
+    40% { transform: translate(5px, -5px); }
+    60% { transform: translate(-5px, 5px); }
+    80% { transform: translate(5px, -5px); }
+    100% { transform: translate(0); }
+  }
+
+  .shake {
+    animation: screen-shake 0.3s ease;
+  }
+</style>
 </head>
 <body>
   <h1>Shit on Your Tip or Tip on Your Shit</h1>
@@ -115,7 +129,6 @@ function unlockAchievement(id) {
   }
 }
 
-
   let leftProfile, rightProfile;
   let selectedSlot = null;
   let hasClapped = false;
@@ -197,16 +210,30 @@ function unlockAchievement(id) {
 
 
 clapBtn.addEventListener("click", () => {
-  if (hasClapped) return; 
+  if (hasClapped) return;
   hasClapped = true;
-  
+
+  // 🔊 Play clap audio immediately
+  clapSound.pause();
+  clapSound.currentTime = 0;
+  clapSound.playbackRate = 1.5;
+  clapSound.play();
+
+  // 💥 Shake screen
+  document.body.classList.add("shake");
+  setTimeout(() => {
+    document.body.classList.remove("shake");
+  }, 300);
+
+  // 🫢 Reveal the chosen name
   let chosen = selectedSlot === "left" ? leftProfile : rightProfile;
   if (selectedSlot === "left") {
     leftDiv.textContent = chosen.name;
   } else {
     rightDiv.textContent = chosen.name;
   }
-  
+
+  // Reveal the other guy after a bit
   setTimeout(() => {
     if (selectedSlot === "left") {
       rightDiv.textContent = rightProfile.name;
@@ -215,12 +242,13 @@ clapBtn.addEventListener("click", () => {
     }
   }, 300);
 
+  // ☠️ STD = game over
   if (chosen.isSTD) {
     gameOver();
     return;
   }
 
-  clapSound.play();
+  // ✅ Good clap, update score and check achievements
   score += chosenTargets.includes(chosen.name) ? 2 : 1;
   clapCounts[chosen.name] = (clapCounts[chosen.name] || 0) + 1;
   const key = "clapped" + chosen.name;
@@ -230,6 +258,7 @@ clapBtn.addEventListener("click", () => {
 
   updateScore();
 
+  // Start next round
   setTimeout(() => {
     resetRound();
   }, 1000);

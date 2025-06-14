@@ -3,42 +3,82 @@
 <head>
   <meta charset="UTF-8">
   <title>Shit on Your Tip</title>
-  <link href="https://fonts.googleapis.com/css2?family=Oswald&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
   <style>
+    * {
+      box-sizing: border-box;
+    }
+
     body {
-      background-color: #111;
+      background-color: #000;
       color: #fff;
-      font-family: 'Oswald', sans-serif;
+      font-family: 'Press Start 2P', cursive;
       text-align: center;
-      padding-top: 100px;
+      padding-top: 80px;
+      margin: 0;
+      background-image: repeating-linear-gradient(
+        45deg,
+        #1a1a1a,
+        #1a1a1a 10px,
+        #111 10px,
+        #111 20px
+      );
     }
 
     h1 {
-      font-size: 2em;
-      margin-bottom: 30px;
+      font-size: 1.2em;
+      line-height: 2.2em;
+      margin-bottom: 60px;
+      text-shadow:
+        -2px -2px 0 #000,
+         2px -2px 0 #000,
+        -2px  2px 0 #000,
+         2px  2px 0 #000;
+      background-color: white;
+      color: black;
+      display: inline-block;
+      padding: 20px;
+      border: 4px dashed #333;
+      letter-spacing: 4px;
     }
 
     button {
+      font-family: 'Press Start 2P', cursive;
       padding: 20px 40px;
-      font-size: 1.5em;
+      font-size: 0.65em;
       background-color: #ba732a;
-      border: none;
-      color: white;
+      border: 2px solid white;
+      color: black;
       cursor: pointer;
-      border-radius: 10px;
-      transition: background 0.3s ease;
+      border-radius: 0;
+      transition: transform 0.1s ease, background 0.3s ease;
       display: block;
-      margin: 20px auto;
+      margin: 25px auto;
+      width: 320px;
+      image-rendering: pixelated;
+      box-shadow: 0 0 0 3px black;
     }
 
     button:hover {
-      background-color: #a15f22;
+      background-color: #ffbe4d;
+      transform: scale(1.04);
+    }
+
+    #footer-text {
+      margin-top: 80px;
+      font-size: 8px;
+      color: #888;
+      font-family: 'Press Start 2P', cursive;
     }
   </style>
 </head>
 <body>
-  <h1>Shit on Your Tip or Tip on Your Shit</h1>
-  <button onclick="location.href='selection.html'">Play</button>
-  <button onclick="location.href='achievements.html'">Achievements</button>
+  <h1>SHIT ON YOUR TIP<br>OR TIP ON YOUR SHIT</h1>
+
+  <button onclick="location.href='selection.html'">PLAY</button>
+  <button onclick="location.href='achievements.html'">ACHIEVEMENTS</button>
+  <button onclick="location.href='shop.html'">SHOP</button>
+
+  <p id="footer-text">I just shoved a nuke up my urethra™</p>
 </body>
 </html>
