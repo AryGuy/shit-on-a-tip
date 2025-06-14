@@ -1,0 +1,63 @@
+body {
+  background: #111;
+  color: #fff;
+  font-family: sans-serif;
+  text-align: center;
+  padding-top: 30px;
+}
+
+#score {
+  font-size: 1.5rem;
+  margin-bottom: 20px;
+}
+
+.game-container {
+  display: flex;
+  justify-content: center;
+  gap: 50px;
+  margin-bottom: 30px;
+}
+
+.profile {
+  width: 150px;
+  height: 150px;
+  background-color: #444;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  border-radius: 10px;
+}
+
+.profile.selected {
+  border: 3px solid yellow;
+}
+
+.buttons {
+  margin-bottom: 20px;
+}
+
+button {
+  padding: 10px 20px;
+  font-size: 1rem;
+  margin: 5px;
+  cursor: pointer;
+  border-radius: 8px;
+  border: none;
+  transition: transform 0.1s ease;
+}
+
+/* Bounce effect when clicked */
+button:active {
+  transform: scale(0.95);
+}
+
+@keyframes bounceClick {
+  0% { transform: scale(1); }
+  50% { transform: scale(0.9); }
+  100% { transform: scale(1); }
+}
+
+button.clicked {
+  animation: bounceClick 0.2s ease;
+}

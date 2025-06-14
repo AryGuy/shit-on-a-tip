@@ -3,11 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <title>Game Over</title>
+  <link href="https://fonts.googleapis.com/css2?family=Oswald&display=swap" rel="stylesheet">
   <style>
     body {
       background: #111;
       color: #fff;
-      font-family: sans-serif;
+      font-family: 'Luckiest Guy', cursive;
       text-align: center;
       padding-top: 100px;
     }
@@ -28,31 +29,28 @@
 </head>
 <body>
   <h1>YOU GOT SHIT ON YOUR DICK NOOOOO </h1>
-  <p class="subtext">(hey click anywhere on this page)</p>
-<p>Final Score: <span id="final-score">0</span></p>
-<button onclick="location.href='selection.html'">Try Again?</button>
+  <p>Final Score: <span id="final-score">0</span></p>
+  <button onclick="location.href='selection.html'">Try Again?</button>
 
-<audio id="moyai-sound" src="moyai.mp3" preload="auto"></audio>
+  <audio id="moyai-sound" src="moyai.mp3" preload="auto"></audio>
 
-<script>
-  const score = sessionStorage.getItem('lastScore') || 0;
-  document.getElementById('final-score').textContent = score;
+  <script>
+    const score = sessionStorage.getItem('lastScore') || 0;
+    document.getElementById('final-score').textContent = score;
 
-  window.addEventListener('load', () => {
-    const moyai = document.getElementById('moyai-sound');
-    moyai.volume = 0.7;
+    window.addEventListener('load', () => {
+      const moyai = document.getElementById('moyai-sound');
+      moyai.volume = 0.7;
 
-    moyai.play().catch(() => {
-      console.warn("Autoplay blocked. Waiting for user interaction...");
-      const tryPlay = () => {
-        moyai.play();
-        document.removeEventListener("click", tryPlay);
-      };
-      document.addEventListener("click", tryPlay);
+      moyai.play().catch(() => {
+        console.warn("Autoplay blocked. Waiting for user interaction...");
+        const tryPlay = () => {
+          moyai.play();
+          document.removeEventListener("click", tryPlay);
+        };
+        document.addEventListener("click", tryPlay);
+      });
     });
-  });
-</script>
-
   </script>
 </body>
 </html>
