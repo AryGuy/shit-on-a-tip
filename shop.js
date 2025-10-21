@@ -85,6 +85,14 @@ if (coinMultiplier >= 10) {
   killGovBtn.style.opacity = "0.5";
   killGovBtn.style.cursor = "not-allowed";
 }
+/* ======================= Hard Mode Load Check ======================= */
+const hardModeBtn = document.querySelector('.buy-item[data-id="Hard Mode"]');
+if (localStorage.getItem("hardModeBought") === "true" && hardModeBtn) {
+    hardModeBtn.disabled = true;
+    hardModeBtn.textContent = "Hard Mode - ✅ Purchased";
+    hardModeBtn.style.opacity = "0.5";
+    hardModeBtn.style.cursor = "not-allowed";
+}
 
     /* ======================= Typewriter Effect ======================= */
     let typeWriterInterval; // global variable to track interval
