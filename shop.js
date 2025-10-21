@@ -56,36 +56,12 @@ const observer = new MutationObserver(() => {
 observer.observe(document.body, { childList: true, subtree: true });
 
 
-    /* ======================= Coin Setup (Modified for Nuisance Security) ======================= */
+    /* ======================= Coin Setup ======================= */
+    let coins = parseInt(localStorage.getItem("coins")) || 0;
+    let coinMultiplier = parseInt(localStorage.getItem("coinMultiplier") || "1");
 
-// 1. Define your "Secret" Constants
-// Rename the storage key and choose a fixed "salt" value
-const COINS_KEY_ENCODED = "c_data_e7x"; // New, less obvious key name
-const COIN_SALT = 1337;                  // Fixed number to add/subtract
-
-let coins = 0; // Initialize local variable
-
-// 2. Loading Logic (Replaces the original loading)
-const encodedCoins = parseInt(localStorage.getItem(COINS_KEY_ENCODED)) || 0;
-
-if (encodedCoins > COIN_SALT) {
-    // Decode: Subtract the salt
-    coins = encodedCoins - COIN_SALT; 
-} else {
-    coins = 0; // Default if no data or invalid data
-}
-
-let coinMultiplier = parseInt(localStorage.getItem("coinMultiplier") || "1");
-
-const coinDisplay = document.getElementById("coin-count");
-coinDisplay.textContent = coins;
-
-// 3. New Function to Save Coins (Must be used instead of direct localStorage.setItem)
-function saveCoins() {
-    // Encode: Add the salt
-    const encodedValue = coins + COIN_SALT;
-    localStorage.setItem(COINS_KEY_ENCODED, encodedValue);
-}
+    const coinDisplay = document.getElementById("coin-count");
+    coinDisplay.textContent = coins;
 
     const taxButton = document.querySelector('.buy-item[data-id="Tax Evasion"]');
 if (parseInt(localStorage.getItem("coinMultiplier") || "1") > 1) {
