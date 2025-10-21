@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Game - Shit on Your Tip</title>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    /* ─────────────── Screen Shake Animation ─────────────── */
+    @keyframes screen-shake {
+      0% { transform: translate(0); }
+      20% { transform: translate(-5px, 5px); }
+      40% { transform: translate(5px, -5px); }
+      60% { transform: translate(-5px, 5px); }
+      80% { transform: translate(5px, -5px); }
+      100% { transform: translate(0); }
+    }
+
+    .shake {
+      animation: screen-shake 0.3s ease;
+    }
+  </style>
+</head>
+
+<body>
+  <!-- ─────────────── Title & Info ─────────────── -->
+  <h1>Shit on Your Tip or Tip on Your Shit</h1>
+  <div id="timer-display" style="
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  font-family: monospace;
+  font-size: 0.8rem;
+  color: rgba(255,255,255,0.6);
+  background: rgba(0,0,0,0.2);
+  padding: 4px 8px;
+  border-radius: 4px;
+  z-index: 1000;
+  pointer-events: none;
+">
+00:00
+</div>
+  <div id="chosen-targets">
+    <strong>Chosen Fine Shyts:</strong> <span id="targets-display">Loading...</span>
+  </div>
+
+  <div id="score">Score: 0</div>
+
+  <!-- ─────────────── Game UI ─────────────── -->
+  <div class="game-container">
+    <div class="profile" id="left-slot">❓</div>
+    <div class="profile" id="right-slot">❓</div>
+  </div>
+
+  <div class="buttons">
+    <div id="slot-select">
+      <button id="choose-left">Choose Left Slot</button>
+      <button id="choose-right">Choose Right Slot</button>
+    </div>
+    <button id="clap-btn" disabled>Clap</button>
+    <p id="reveal-count">Reveals left: 3</p>
+    <button id="reveal-btn" disabled>Reveal Slot</button>
+  </div>
+
+  <!-- ─────────────── Audio Assets ─────────────── -->
+  <audio id="clap-sound" src="assets/clap.mp3" preload="auto"></audio>
+  <audio id="alert-sound" src="alert.mp3" preload="auto"></audio>
+  <audio id="achievement-sound" src="achievement.mp3" preload="auto"></audio>
+  <audio id="button-click" src="assets/ingameclick.mp3" preload="auto"></audio>
+  <audio id="reveal-click" src="assets/clickreveal.mp3" preload="auto"></audio>
+  <audio id="fnaf-ambience" src="assets/fnaf_ambience.mp3" preload="auto"></audio>
+  <audio id="glance-sfx" src="assets/glanceload.mp3" preload="auto"></audio>
+  <audio id="gofast-sfx" src="assets/gofast.mp3" preload="auto"></audio>
+
+  <!-- ─────────────── Achievement Popup ─────────────── -->
+  <div id="achievement-popup" class="achievement-popup"></div>
+<script src="game.js"></script>
+</body>
+</html>

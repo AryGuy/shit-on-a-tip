@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Shit on Your Tip</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      background-color: #000;
+      color: #fff;
+      font-family: 'Press Start 2P', cursive;
+      text-align: center;
+      padding-top: 80px;
+      margin: 0;
+      background-image: repeating-linear-gradient(
+        45deg,
+        #1a1a1a,
+        #1a1a1a 10px,
+        #111 10px,
+        #111 20px
+      );
+    }
+
+    h1 {
+      font-size: 1.2em;
+      line-height: 2.2em;
+      margin-bottom: 60px;
+      text-shadow:
+        -2px -2px 0 #000,
+         2px -2px 0 #000,
+        -2px  2px 0 #000,
+         2px  2px 0 #000;
+      background-color: white;
+      color: black;
+      display: inline-block;
+      padding: 20px;
+      border: 4px dashed #333;
+      letter-spacing: 4px;
+    }
+
+    .nav-btn {
+      font-family: 'Press Start 2P', cursive;
+      padding: 20px 40px;
+      font-size: 0.65em;
+      background-color: #ba732a;
+      border: 2px solid white;
+      color: black;
+      cursor: pointer;
+      border-radius: 0;
+      transition: transform 0.1s ease, background 0.3s ease;
+      display: block;
+      margin: 25px auto;
+      width: 320px;
+      image-rendering: pixelated;
+      box-shadow: 0 0 0 3px black;
+    }
+
+    .nav-btn:hover {
+      background-color: #ffbe4d;
+      transform: scale(1.04);
+    }
+
+    #footer-text {
+      margin-top: 80px;
+      font-size: 8px;
+      color: #888;
+      font-family: 'Press Start 2P', cursive;
+    }
+
+    #reset-btn {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      font-family: 'Press Start 2P', cursive;
+      font-size: 0.6em;
+      padding: 15px 30px;
+      background-color: #ff4444;
+      border: 2px solid white;
+      color: black;
+      cursor: pointer;
+      border-radius: 0;
+      transition: transform 0.1s ease, background 0.3s ease;
+      box-shadow: 0 0 0 3px black;
+      z-index: 9999;
+    }
+
+    #reset-btn:hover {
+      background-color: #ff8888;
+      transform: scale(1.04);
+    }
+
+    #reset-modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0,0,0,0.9);
+      z-index: 10000;
+      font-family: 'Press Start 2P', cursive;
+      color: white;
+      text-align: center;
+      padding-top: 120px;
+    }
+
+    #reset-modal .modal-box {
+      display: inline-block;
+      background: white;
+      color: black;
+      padding: 30px;
+      border: 4px dashed #333;
+      box-shadow: 0 0 0 3px black;
+    }
+
+    #reset-modal .modal-box p {
+      margin-bottom: 40px;
+    }
+
+    #reset-modal .nav-btn {
+      margin: 10px auto;
+      width: 240px;
+    }
+    .modal-btn {
+  font-family: 'Press Start 2P', cursive;
+  padding: 20px 40px;
+  font-size: 0.65em;
+  border: 2px solid white;
+  color: black;
+  cursor: pointer;
+  box-shadow: 0 0 0 3px black;
+  background-color: #888;
+  image-rendering: pixelated;
+  transition: transform 0.1s ease, background 0.3s ease;
+  display: block;
+  margin: 10px auto;
+  width: 240px;
+}
+
+.modal-btn:hover {
+  background-color: #ffbe4d;
+  transform: scale(1.04);
+}
+  </style>
+</head>
+<body>
+  <h1>SHIT ON YOUR TIP<br>OR TIP ON YOUR SHIT</h1>
+
+  <button data-href="selection.html" class="nav-btn">PLAY</button>
+  <button data-href="achievements.html" class="nav-btn">ACHIEVEMENTS</button>
+  <button data-href="shop.html" class="nav-btn">SHOP</button>
+  <button data-href="PlayableChar.html" class="nav-btn">CHARACTERS</button>
+
+  <p id="footer-text">I just shoved a nuke up my urethra™</p>
+
+  <button id="reset-btn">RESET DATA</button>
+
+  <div id="reset-modal">
+    <div class="modal-box">
+      <p>ARE YOU SURE YOU WANT TO JIZZ ON YO DATA?</p>
+      <button id="confirm-reset" class="nav-btn" style="background:#ff4444;">HELL YEAH</button>
+      <button id="cancel-reset" class="modal-btn">PLZ NO</button>
+    </div>
+  </div>
+
+  <audio id="hover-sfx" src="assets/buttonhover.mp3" preload="auto"></audio>
+  <audio id="click-sfx" src="assets/buttonclick.mp3" preload="auto"></audio>
+
+  <script>
+    const hoverSfx = document.getElementById('hover-sfx');
+    const clickSfx = document.getElementById('click-sfx');
+    const resetBtn = document.getElementById('reset-btn');
+    const resetModal = document.getElementById('reset-modal');
+    const confirmReset = document.getElementById('confirm-reset');
+    const cancelReset = document.getElementById('cancel-reset');
+
+    document.querySelectorAll('.nav-btn').forEach(btn => {
+      btn.addEventListener('pointerenter', () => {
+        hoverSfx.currentTime = 0;
+        hoverSfx.play().catch(() => {});
+      });
+
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const target = btn.getAttribute('data-href');
+        clickSfx.currentTime = 0;
+        clickSfx.play().catch(() => {});
+        setTimeout(() => { window.location.href = target; }, 200);
+      });
+    });
+
+    resetBtn.addEventListener('pointerenter', () => {
+      hoverSfx.currentTime = 0;
+      hoverSfx.play().catch(() => {});
+    });
+
+    resetBtn.addEventListener('click', () => {
+      clickSfx.currentTime = 0;
+      clickSfx.play().catch(() => {});
+      resetModal.style.display = 'block';
+    });
+
+    confirmReset.addEventListener('click', () => {
+      localStorage.clear();
+      sessionStorage.clear();
+      resetModal.style.display = 'none';
+      location.reload();
+    });
+
+    cancelReset.addEventListener('pointerenter', () => {
+  hoverSfx.currentTime = 0;
+  hoverSfx.play().catch(() => {});
+});
+
+cancelReset.addEventListener('click', () => {
+  clickSfx.currentTime = 0;
+  clickSfx.play().catch(() => {});
+  resetModal.style.display = 'none';
+});
+
+
+    const currentChar = sessionStorage.getItem("playerCharacter");
+    if (currentChar) {
+      console.log(`Hello, you're using ${currentChar}`);
+    }
+  </script>
+</body>
+</html>

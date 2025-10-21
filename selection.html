@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Fine Shyt Selection</title>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="selection.css">
+  <style>
+    /* === HUD for Selected Player === */
+    #individuals-display {
+  position: fixed;
+  top: 80px;
+  left: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.1);
+  border: 3px solid white;
+  padding: 10px;
+  border-radius: 6px;
+  box-shadow: 0 0 0 3px black;
+  z-index: 1000;
+  width: 130px;
+  text-align: center;
+}
+
+#individual-label {
+  font-size: 0.45em;
+  color: #ccc;
+  margin-bottom: 6px;
+  text-shadow: 2px 2px 0 #000;
+}
+
+#individual-icon {
+  width: 64px;
+  height: 64px;
+  image-rendering: pixelated;
+  background: #000;
+  border: 2px solid white;
+  box-shadow: 0 0 0 2px black;
+  margin-bottom: 6px;
+}
+
+#individual-name {
+  font-size: 0.5em;
+  color: #fff;
+  text-shadow: 2px 2px 0 #000;
+  word-wrap: break-word;
+}
+  </style>
+</head>
+<body>
+  <!-- === HUD (shows selected player) === -->
+<div id="individuals-display">
+  <div id="individual-label">Currently playing as:</div>
+  <img id="individual-icon" src="" alt="Icon">
+  <div id="individual-name">None</div>
+</div>
+
+  <h1>Choose Your 3 Fine Shyt</h1>
+  <div id="coin-display">🪙 Coins: <span id="coin-count">0</span></div>
+  <div id="hardmode-toggle-container" style="margin-top: 10px;">
+  <label>
+    <input type="checkbox" id="hardmode-toggle">
+    Hard Mode
+  </label>
+</div>
+
+
+  <div id="carousel-container">
+    <button id="left-arrow" class="action-btn">&lt;</button>
+    <img id="character-image" src="" alt="Character Image">
+    <button id="right-arrow" class="action-btn">&gt;</button>
+  </div>
+
+  <h2 id="character-name">Character Name</h2>
+  <button id="select-btn" class="action-btn">Select This Shyt</button>
+
+  <p>Chosen: <span id="chosen-count">0</span>/3</p>
+  <ul id="chosen-list"></ul>
+
+  <button id="start-btn" class="nav-btn" disabled>Start Game</button>
+
+  <p style="margin-top: 20px; font-size: 1.2rem;">
+    High Score: <span id="high-score">0</span>
+  </p>
+
+  <button data-href="index.html" class="nav-btn return-btn">
+    Return to Main Menu
+  </button>
+
+  <!-- Sounds -->
+  <audio id="hover-sfx" src="assets/buttonhover.mp3" preload="auto"></audio>
+  <audio id="click-sfx" src="assets/buttonclick.mp3" preload="auto"></audio>
+  <audio id="selection-music" src="assets/selectionmusic.mp3" loop></audio>
+  <audio id="select-click-sfx" src="assets/selectclick.mp3" preload="auto"></audio>
+
+  <script>
+    // === MUSIC HANDLER ===
+    const selectionMusic = document.getElementById('selection-music');
+    const playMusic = () => {
+      if (!selectionMusic) return;
+      selectionMusic.volume = 0.7;
+      selectionMusic.play().catch(() => {});
+    };
+    document.addEventListener('DOMContentLoaded', playMusic);
+    document.addEventListener('pointerdown', playMusic, { once: true });
+  </script>
+
+  <script>
+    // === CHARACTER DATA ===
+    const profiles = [
+      { name: "Zewonie", img: "assets/Zewonie.png" },
+      { name: "Dennis", img: "assets/Dennis.png" },
+      { name: "Iqnore", img: "assets/Iqnore.png" },
+      { name: "Hieu", img: "assets/Hieu.png" },
+      { name: "Edd", img: "assets/Edd.png" },
+      { name: "Win", img: "assets/Win.png" },
+      { name: "Kai", img: "assets/Kai.png" },
+      { name: "Ary", img: "assets/Ary.png" },
+      { name: "Matt", img: "assets/Matt.png" },
+      { name: "Sai", img: "assets/Sai.png" },
+      { name: "Zhiynl", img: "assets/Zhiynl.png" },
+      { name: "Andy", img: "assets/Andy.png" },
+      { name: "Mido", img: "assets/Mido.png" }
+    ];
+
+    let currentIndex = 0;
+    let selected = [];
+
+    sessionStorage.removeItem("coinsRewarded");
+
+    const nameEl = document.getElementById('character-name');
+    const imgEl = document.getElementById('character-image');
+    const chosenCount = document.getElementById('chosen-count');
+    const chosenList = document.getElementById('chosen-list');
+    const startBtn = document.getElementById('start-btn');
+
+    function updateDisplay() {
+      const current = profiles[currentIndex];
+      nameEl.textContent = current.name;
+      imgEl.src = current.img;
+    }
+
+    document.getElementById('left-arrow').addEventListener('click', () => {
+      currentIndex = (currentIndex - 1 + profiles.length) % profiles.length;
+      updateDisplay();
+    });
+
+    document.getElementById('right-arrow').addEventListener('click', () => {
+      currentIndex = (currentIndex + 1) % profiles.length;
+      updateDisplay();
+    });
+
+    document.getElementById('select-btn').addEventListener('click', () => {
+      const current = profiles[currentIndex];
+      if (selected.includes(current.name)) return;
+
+      const selectSfx = document.getElementById('select-click-sfx');
+      selectSfx.currentTime = 0;
+      selectSfx.play().catch(() => {});
+
+      if (selected.length < 3) {
+        selected.push(current.name);
+        const li = document.createElement('li');
+        li.textContent = current.name;
+        chosenList.appendChild(li);
+        chosenCount.textContent = selected.length;
+      }
+
+      startBtn.disabled = selected.length !== 3;
+    });
+
+    startBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const clickSfx = document.getElementById('click-sfx');
+      const chosen = JSON.stringify(selected);
+
+      // Keep playerCharacter consistent with selection system
+      const playerChar = sessionStorage.getItem("playerCharacter");
+      if (playerChar) console.log(`Active Player: ${playerChar}`);
+
+      clickSfx.currentTime = 0;
+      clickSfx.play().catch(() => {
+        sessionStorage.setItem("chosenTargets", chosen);
+        window.location.href = "game.html";
+      });
+
+      setTimeout(() => {
+        sessionStorage.setItem("chosenTargets", chosen);
+        window.location.href = "game.html";
+      }, 200);
+    });
+
+    document.getElementById("high-score").textContent = localStorage.getItem("highScore") || 0;
+    document.getElementById("coin-count").textContent = localStorage.getItem("coins") || 0;
+
+    updateDisplay();
+  </script>
+
+  <script>
+    // === BUTTON SOUND HANDLERS ===
+    const hoverSfx = document.getElementById('hover-sfx');
+    const clickSfx = document.getElementById('click-sfx');
+    document.querySelectorAll('.action-btn, .nav-btn').forEach(btn => {
+      btn.addEventListener('pointerenter', () => {
+        hoverSfx.currentTime = 0;
+        hoverSfx.play().catch(() => {});
+      });
+      btn.addEventListener('click', () => {
+        clickSfx.currentTime = 0;
+        clickSfx.play().catch(() => {});
+      });
+    });
+
+    // === RETURN BUTTON ===
+    const returnBtn = document.querySelector('.return-btn');
+    if (returnBtn) {
+      returnBtn.addEventListener('click', (e) => {
+        e.preventDefault();
+        const target = returnBtn.getAttribute('data-href') || 'index.html';
+        clickSfx.currentTime = 0;
+        clickSfx.play().catch(() => window.location.href = target);
+        setTimeout(() => window.location.href = target, 200);
+      });
+    }
+
+    // === PLAYER CHARACTER HUD ===
+const displayIcon = document.getElementById("individual-icon");
+const displayName = document.getElementById("individual-name");
+const storedChar = sessionStorage.getItem("playerCharacter");
+
+if (storedChar) {
+  displayIcon.src = `assets/chars/${storedChar}.png`;
+  displayName.textContent = storedChar;
+} else {
+  displayIcon.src = "";
+  displayName.textContent = "None";
+}
+  // Show Hard Mode toggle only if Hard Mode was purchased
+const hardmodeContainer = document.getElementById("hardmode-toggle-container");
+const hardmodeBought = localStorage.getItem("hardModeBought") === "true";
+
+if (!hardmodeBought) {
+  hardmodeContainer.style.display = "none";
+} else {
+  hardmodeContainer.style.display = "block";
+
+  // ===== Track Hard Mode state for game.html =====
+  const hardmodeToggle = document.getElementById("hardmode-toggle");
+  // Initialize checkbox from previous session
+  hardmodeToggle.checked = sessionStorage.getItem("hardModeActive") === "true";
+
+  // Update sessionStorage when toggled
+  hardmodeToggle.addEventListener("change", () => {
+    sessionStorage.setItem("hardModeActive", hardmodeToggle.checked ? "true" : "false");
+  });
+}
+  </script>
+</body>
+</html>

@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>NNNNNOOOOOOOOOOOO</title>
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet" />
+  <style>
+    body {
+      background-color: #000;
+      color: #fff;
+      font-family: 'Press Start 2P', cursive;
+      text-align: center;
+      margin: 0;
+      padding-top: 150px;
+    }
+    h1 {
+      font-size: 80px;
+      line-height: 1.1;
+      margin: 0 20px 40px;
+      user-select: none;
+    }
+    p {
+      font-size: 16px;
+      margin-bottom: 40px;
+      color: #ff0000;
+      user-select: none;
+    }
+    #final-score {
+      color: #ff0000;
+    }
+    button {
+      font-family: 'Press Start 2P', cursive;
+      padding: 15px 40px;
+      font-size: 14px;
+      background: #ba732a;
+      border: none;
+      color: black;
+      cursor: pointer;
+      border-radius: 0;
+      transition: background 0.2s ease;
+      user-select: none;
+    }
+    button:hover {
+      background: #ffbe4d;
+    }
+    audio {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <h1>YOU GOT SHIT ON<br>YOUR DICK NNNNNOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOONOOOO</h1>
+  <p>
+    FINAL SCORE: <span id="final-score">0</span></p>
+  <p><span id="multiplier-text" style="color: #ffd700; font-weight: bold;"></span>
+</p>
+  <div style="margin-top:20px; gap:10px; display:inline-flex; flex-direction: column;">
+    <button onclick="location.href='selection.html'">Try again?</button>
+    <button onclick="location.href='index.html'">Main Menu</button>
+  </div>
+
+  <audio id="badending-sound" src="assets/badending.mp3" preload="auto"></audio>
+  <audio id="moyai-sound" src="assets/moyai.mp3" preload="auto"></audio>
+
+  <script>
+const score = parseInt(sessionStorage.getItem('lastScore') || 0);
+document.getElementById('final-score').textContent = score;
+
+// Get coin multiplier from localStorage
+const coinMultiplier = parseInt(localStorage.getItem("coinMultiplier") || "1");
+
+// Show multiplier text only if greater than 1
+const multiplierTextEl = document.getElementById("multiplier-text");
+if (coinMultiplier > 1) {
+  multiplierTextEl.textContent = ` (Coins Multiplier: ${coinMultiplier}x)`;
+}
+
+// Prevent double rewards using session flag
+const alreadyRewarded = sessionStorage.getItem("coinsRewarded");
+if (!alreadyRewarded) {
+  let coins = parseInt(localStorage.getItem("coins")) || 0;
+  coins += score * coinMultiplier;
+  localStorage.setItem("coins", coins);
+  sessionStorage.setItem("coinsRewarded", "true"); // mark rewarded
+}
+
+// Decide which ending sound to play
+window.addEventListener('load', () => {
+  const isBad = sessionStorage.getItem("badEnding") === "true";
+  const soundEl = isBad
+    ? document.getElementById('badending-sound')
+    : document.getElementById('moyai-sound');
+
+  soundEl.volume = 0.7;
+  soundEl.play().catch(() => {
+    const tryPlay = () => {
+      soundEl.play();
+      document.removeEventListener("click", tryPlay);
+    };
+    document.addEventListener("click", tryPlay);
+  });
+
+  // clear the flag so reloads don't re-trigger bad ending unintentionally
+  sessionStorage.removeItem("badEnding");
+});
+
+// ================= BUTTON SOUNDS =================
+const buttons = document.querySelectorAll('button');
+const hoverSound = new Audio('assets/buttonhover.mp3');
+const clickSound = new Audio('assets/buttonclick.mp3');
+hoverSound.volume = 0.5;
+clickSound.volume = 0.7;
+
+buttons.forEach(btn => {
+  btn.addEventListener('mouseenter', () => {
+    hoverSound.currentTime = 0;
+    hoverSound.play().catch(() => {});
+  });
+
+  btn.addEventListener('click', () => {
+    clickSound.currentTime = 0;
+    clickSound.play().catch(() => {});
+  });
+});
+</script>
+</body>
+</html>

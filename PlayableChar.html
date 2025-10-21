@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Select Your Character</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      background-color: #000;
+      color: #fff;
+      font-family: 'Press Start 2P', cursive;
+      text-align: center;
+      padding-top: 80px;
+      margin: 0;
+      background-image: repeating-linear-gradient(
+        45deg,
+        #1a1a1a,
+        #1a1a1a 10px,
+        #111 10px,
+        #111 20px
+      );
+    }
+
+    h1 {
+      font-size: 1.2em;
+      line-height: 2.2em;
+      margin-bottom: 40px;
+      text-shadow:
+        -2px -2px 0 #000,
+         2px -2px 0 #000,
+        -2px  2px 0 #000,
+         2px  2px 0 #000;
+      background-color: white;
+      color: black;
+      display: inline-block;
+      padding: 20px;
+      border: 4px dashed #333;
+      letter-spacing: 4px;
+    }
+
+    #character-list {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    .char-btn {
+      width: 64px;
+      height: 64px;
+      background-color: #ba732a;
+      border: 2px solid white;
+      box-shadow: 0 0 0 3px black;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      cursor: pointer;
+      transition: transform 0.1s ease, background 0.3s ease;
+    }
+
+    .char-btn:hover {
+      background-color: #ffbe4d;
+      transform: scale(1.1);
+    }
+
+    .char-icon {
+      width: 64px;
+      height: 64px;
+      image-rendering: pixelated;
+    }
+
+    #exit-btn,
+    #confirm-btn {
+      font-family: 'Press Start 2P', cursive;
+      padding: 16px 32px;
+      font-size: 0.65em;
+      background-color: #444;
+      border: 2px solid white;
+      color: white;
+      cursor: pointer;
+      margin: 20px auto;
+      width: 200px;
+      box-shadow: 0 0 0 3px black;
+      transition: background 0.3s ease;
+      display: block;
+    }
+
+    #exit-btn:hover,
+    #confirm-btn:hover { background-color: #777; }
+
+    #confirm-btn {
+      position: relative;
+      overflow: hidden;
+    }
+    #confirm-btn::after {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: -75%;
+      width: 50%;
+      height: 100%;
+      background: linear-gradient(
+        120deg,
+        rgba(255, 255, 255, 0) 0%,
+        rgba(255, 255, 255, 0.6) 50%,
+        rgba(255, 255, 255, 0) 100%
+      );
+      transform: skewX(-20deg);
+      animation: shine 5s infinite;
+    }
+    @keyframes shine {
+      0%   { left: -75%; }
+      8%   { left: 125%; }
+      100% { left: 125%; }
+    }
+
+    #footer-text {
+      position: fixed;
+      bottom: 10px;
+      left: 0;
+      right: 0;
+      font-size: 8px;
+      color: #888;
+      font-family: 'Press Start 2P', cursive;
+    }
+
+    #wardrobe {
+      position: fixed;
+      bottom: 0;
+      right: 40px;
+      width: 200px;
+      height: 260px;
+      display: flex;
+      justify-content: center;
+      align-items: flex-end;
+      z-index: 999;
+    }
+
+    #wardrobe-box {
+      position: relative;
+      bottom: 40px;
+      width: 200px;
+      height: 220px;
+      background: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      z-index: 15;
+      border: 6px double black;
+      box-shadow: 0 0 0 4px #333, inset 0 0 0 4px #999;
+    }
+
+    #wardrobe-character {
+      width: 95%;
+      height: 95%;
+      object-fit: contain;
+      image-rendering: pixelated;
+      z-index: 10;
+    }
+
+    .hidden { display: none; }
+    #char-description {
+  position: fixed;
+  bottom: 280px;
+  right: 40px;
+  width: 200px;
+  font-size: 10px;
+  color: white;
+  font-family: 'Press Start 2P', cursive;
+  text-align: center;
+  line-height: 1.4em;
+  z-index: 1000;
+}
+  #char-name {
+  position: fixed;
+  bottom: 20px;
+  right: 40px;
+  width: 200px;
+  font-size: 10px;
+  color: #ffbe4d;
+  font-family: 'Press Start 2P', cursive;
+  text-align: center;
+  z-index: 1000;
+}
+  </style>
+</head>
+<body>
+  <h1>CHOOSE YOUR CHARACTER</h1>
+  <div id="character-list"></div>
+  <div id="char-description" class="hidden"></div>
+
+  <div id="wardrobe">
+    <div id="wardrobe-box">
+      <img id="wardrobe-character" class="hidden" alt="Character">
+    </div>
+  </div>
+
+  <button id="confirm-btn" class="hidden">✔</button>
+  <button id="exit-btn">EXIT</button>
+
+  <p id="footer-text">THE INDIVIDUALS ARE ALL GOONERS™</p>
+  <p id="char-name" class="hidden"></p>
+
+  <audio id="hover-sfx" src="assets/buttonhover.mp3" preload="auto"></audio>
+  <audio id="click-sfx" src="assets/buttonclick.mp3" preload="auto"></audio>
+  <audio id="char-music" preload="auto" loop></audio>
+
+  <script>
+  const hoverSfx = document.getElementById('hover-sfx');
+  const clickSfx = document.getElementById('click-sfx');
+  const list = document.getElementById('character-list');
+  const wardrobeChar = document.getElementById("wardrobe-character");
+  const confirmBtn = document.getElementById("confirm-btn");
+  const exitBtn = document.getElementById("exit-btn");
+  const wardrobeBox = document.getElementById("wardrobe-box");
+  const descBox = document.getElementById("char-description");
+  const nameBox = document.getElementById("char-name"); // NEW
+  let wardrobeTimeout;
+  let typeWriterInterval;
+
+  const characterDescriptions = {
+    Sai: "PASSIVE: Double the reveal count and reveal both cards. Additionally, rolls to a fine shyt if revealed card is Lucy or Sans.",
+    Andy: "PASSIVE: Clapping Sans gives you 5 score. Clapping Sans no longer ends the game.",
+    Kj: "PASSIVE: Syrupy feetjob.",
+    // Add more as needed
+  };
+
+  function typeWriterEffect(text, element, delay = 25, callback) {
+    clearInterval(typeWriterInterval);
+    let i = 0;
+    element.textContent = '';
+    typeWriterInterval = setInterval(() => {
+      element.textContent += text[i] || '';
+      i++;
+      if (i >= text.length) {
+        clearInterval(typeWriterInterval);
+        if (callback) callback();
+      }
+    }, delay);
+  }
+
+  const unlockedCharacters = JSON.parse(localStorage.getItem("unlockedCharacters") || "[]");
+
+  if (unlockedCharacters.length === 0) {
+    list.textContent = "No characters unlocked yet. Go to the shop brochacho chip.";
+  } else {
+    unlockedCharacters.forEach(name => {
+      const btn = document.createElement("button");
+      btn.classList.add("char-btn");
+
+      const img = document.createElement("img");
+      img.src = `assets/chars/${name}.png`;
+      img.alt = name;
+      img.classList.add("char-icon");
+      btn.appendChild(img);
+
+      btn.addEventListener('pointerenter', () => {
+        hoverSfx.currentTime = 0;
+        hoverSfx.play().catch(() => {});
+      });
+
+      btn.addEventListener("click", (e) => {
+        e.preventDefault();
+        sessionStorage.setItem("playerCharacter", name);
+        console.log(`Selected character: ${name}`);
+
+        clickSfx.currentTime = 0;
+        clickSfx.play().catch(() => {});
+
+        wardrobeBox.style.display = "flex";
+        wardrobeChar.src = `assets/chars/${name}-walk.gif`;
+        wardrobeChar.classList.remove("hidden");
+
+        const description = characterDescriptions[name] || "A mysterious gooner.";
+        descBox.classList.remove("hidden");
+        typeWriterEffect(description, descBox);
+
+        nameBox.textContent = name.toUpperCase();
+        nameBox.classList.remove("hidden");
+
+        clearTimeout(wardrobeTimeout);
+
+        if (name === "Sai") {
+          confirmBtn.classList.remove("hidden");
+        } else {
+          const idleSrc = `assets/chars/${name}-idle.gif`;
+          const preloadIdle = new Image();
+          preloadIdle.src = idleSrc;
+
+          wardrobeTimeout = setTimeout(() => {
+            wardrobeChar.src = idleSrc;
+            confirmBtn.classList.remove("hidden");
+          }, 2500);
+        }
+      });
+
+      list.appendChild(btn);
+    });
+  }
+
+  confirmBtn.addEventListener("pointerenter", () => {
+    hoverSfx.currentTime = 0;
+    hoverSfx.play().catch(() => {});
+  });
+
+  confirmBtn.addEventListener("click", (e) => {
+    e.preventDefault();
+    clickSfx.currentTime = 0;
+    clickSfx.play().catch(() => {});
+    setTimeout(() => window.location.href = "index.html", 250);
+  });
+
+  exitBtn.addEventListener('pointerenter', () => {
+    hoverSfx.currentTime = 0;
+    hoverSfx.play().catch(() => {});
+  });
+
+  exitBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    clickSfx.currentTime = 0;
+    clickSfx.play().catch(() => {});
+    setTimeout(() => window.location.href = "index.html", 200);
+  });
+
+  const trackList = ['assets/playchar1.mp3','assets/playchar2.mp3','assets/playchar3.mp3'];
+  const charMusic = document.getElementById('char-music');
+  charMusic.src = trackList[Math.floor(Math.random() * trackList.length)];
+
+  document.addEventListener('click', () => {
+    if (charMusic.paused) {
+      charMusic.volume = 0;
+      charMusic.play().then(() => {
+        let vol = 0;
+        const target = 0.4;
+        const fade = setInterval(() => {
+          vol += 0.05;
+          if (vol >= target) { vol = target; clearInterval(fade); }
+          charMusic.volume = vol;
+        }, 200);
+      }).catch(err => console.warn("Autoplay blocked:", err));
+    }
+  }, { once: true });
+
+  const savedChar = sessionStorage.getItem("playerCharacter");
+  if (savedChar) {
+    wardrobeBox.style.display = "flex";
+    wardrobeChar.src = `assets/chars/${savedChar}-idle.gif`;
+    wardrobeChar.classList.remove("hidden");
+    confirmBtn.classList.remove("hidden");
+
+    const description = characterDescriptions[savedChar] || "A mysterious gooner.";
+    descBox.classList.remove("hidden");
+    typeWriterEffect(description, descBox);
+
+    nameBox.textContent = savedChar.toUpperCase();
+    nameBox.classList.remove("hidden");
+  } else {
+    wardrobeBox.style.display = "none";
+    confirmBtn.classList.add("hidden");
+    descBox.classList.add("hidden");
+    nameBox.classList.add("hidden");
+  }
+</script>
+</body>
+</html>

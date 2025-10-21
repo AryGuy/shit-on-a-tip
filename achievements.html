@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Achievements - Shit on Your Tip</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
+  <style>
+    * { box-sizing: border-box; }
+
+    body {
+      background-color: #000;
+      color: #fff;
+      font-family: 'Press Start 2P', cursive;
+      text-align: center;
+      padding-top: 40px;
+      margin: 0;
+      background-image: repeating-linear-gradient(
+        45deg,
+        #1a1a1a,
+        #1a1a1a 10px,
+        #111 10px,
+        #111 20px
+      );
+      image-rendering: pixelated;
+      font-size: 20px;
+    }
+
+    h1 {
+      font-size: 1.2em;
+      line-height: 2.2em;
+      margin-bottom: 40px;
+      text-shadow:
+        -2px -2px 0 #000,
+         2px -2px 0 #000,
+        -2px  2px 0 #000,
+         2px  2px 0 #000;
+      background-color: white;
+      color: black;
+      display: inline-block;
+      padding: 20px;
+      border: 4px dashed #333;
+      letter-spacing: 4px;
+    }
+
+    .achievement {
+      background-color: #222;
+      padding: 20px;
+      margin: 20px auto;
+      max-width: 500px;
+      border: 2px solid #333;
+      color: white;
+      text-align: left;
+      box-shadow: 0 0 0 3px black;
+    }
+
+    .achievement.unlocked {
+      background-color: #ba732a;
+      border-color: white;
+      color: black;
+      box-shadow: 0 0 0 3px black, 0 0 10px #ffbe4d;
+    }
+
+    /* 🔥 Unlock animation */
+    @keyframes unlockPulse {
+      0%   { box-shadow: 0 0 0 3px black, 0 0 0px #ffbe4d; }
+      50%  { box-shadow: 0 0 0 3px black, 0 0 25px #ffbe4d; }
+      100% { box-shadow: 0 0 0 3px black, 0 0 0px #ffbe4d; }
+    }
+
+    .achievement.unlocked.newly-unlocked {
+      animation: unlockPulse 1s ease-out 2;
+    }
+
+    .achievement .name {
+      font-size: 0.7em;
+      margin-bottom: 10px;
+      color: inherit;
+    }
+
+    .achievement .desc {
+      font-size: 0.5em;
+      color: inherit;
+      margin-bottom: 5px;
+    }
+
+    .achievement b {
+      font-size: 0.6em;
+      color: white;
+      background-color: #000;
+      padding: 1px 3px;
+    }
+
+    button {
+      font-family: 'Press Start 2P', cursive;
+      padding: 20px 40px;
+      font-size: 0.65em;
+      background-color: #ba732a;
+      border: 2px solid white;
+      color: black;
+      cursor: pointer;
+      border-radius: 0;
+      transition: transform 0.1s ease, background 0.3s ease;
+      display: block;
+      margin: 40px auto;
+      width: 320px;
+      image-rendering: pixelated;
+      box-shadow: 0 0 0 3px black;
+    }
+
+    button:hover {
+      background-color: #ffbe4d;
+      transform: scale(1.04);
+    }
+
+    #footer-text {
+      margin-top: 60px;
+      font-size: 8px;
+      color: #888;
+    }
+  </style>
+</head>
+<body>
+  <h1>🏆 ACHIEVEMENTS</h1>
+  <div id="achievements-container"></div>
+
+  <button data-href="index.html" class="nav-btn">← BACK TO MAIN MENU</button>
+  <audio id="piano-music" src="assets/piano.mp3" autoplay loop></audio>
+  <audio id="hover-sfx" src="assets/buttonhover.mp3" preload="auto"></audio>
+<audio id="click-sfx" src="assets/buttonclick.mp3" preload="auto"></audio>
+
+  <p id="footer-text">type shit im sayin</p>
+
+  <script>
+    const defaultAchievements = {
+      clappedDennis: { name: "I'M HYPERFOLDING IT", description: "Clap Dennis 10 times in one game" },
+      clappedAndy: { name: "Put On The Cowsuit Bro", description: "Clap Andy 10 times in one game" },
+      clappedKai: { name: "Big Black Japanese Man", description: "Clap Kai 10 times in one game" },
+      clappedSai: { name: "Amogus Sex Plushie", description: "Clap Sai 10 times in one game" },
+      clappedMatt: { name: "Femboy Feet", description: "Clap Matt 10 times in one game" },
+      clappedZewonie: { name: "Quite Possibly My Biggest 'Hear Me Out'", description: "Clap Kj 10 times in one game" },
+      clappedIqnore: { name: "I'm Saving This Shit To My Gallery", description: "Clap Iqnore 10 times in one game" },
+      clappedZhiynl: { name: "DRINK THE PEE NOW NOWWWWW", description: "Clap Zhiynl 10 times in one game" },
+      clappedAry: { name: "FEMALE COUNTERPART SUPREMACY", description: "Clap Ary 10 times in one game" },
+      clappedEdd: { name: "His Mother Is Still Better", description: "Clap Edd 10 times in one game" },
+      clappedWin: { name: "First One To Fall Asleep In The Sleepover", description: "Clap Win 10 times in one game" },
+      clappedHieu: { name: "Only Ethical Gooning 😡", description: "Clap Hieu 10 times in one game" },
+      clappedMido: { name: "Necrophiliac", description: "Clap Mido 10 times in one game" },
+      clappedSansZero: { name: "Pre Nut Clarity", description: "Clap Sans at 0 score" },
+      clappedLucyZero: { name: "You Alright Bro?", description: "Clap Lucy at 0 score" }
+    };
+
+    function loadAchievements() {
+      const saved = JSON.parse(localStorage.getItem("achievements") || "{}");
+      const container = document.getElementById("achievements-container");
+      container.innerHTML = "";
+
+      for (const key in defaultAchievements) {
+        const ach = defaultAchievements[key];
+        const unlocked = saved[key];
+
+        const div = document.createElement("div");
+        div.classList.add("achievement");
+        if (unlocked) {
+          div.classList.add("unlocked");
+
+          // If it was just unlocked this session, animate it
+          if (saved[key] === "new") {
+            div.classList.add("newly-unlocked");
+            // After animation, remove the marker so it doesn't replay every load
+            saved[key] = true;
+            localStorage.setItem("achievements", JSON.stringify(saved));
+          }
+        }
+
+        div.innerHTML = `
+          <div class="name">🎖️ ${ach.name}</div>
+          <div class="desc">${ach.description}</div>
+          <div>Status: <b>${unlocked ? "UNLOCKED ✅" : "LOCKED ❌"}</b></div>
+        `;
+        container.appendChild(div);
+      }
+    }
+
+    loadAchievements();
+  </script>
+
+  <script>
+    const pianoMusic = document.getElementById("piano-music");
+
+    // Try autoplay manually on first user interaction
+    document.addEventListener("click", () => {
+      if (pianoMusic && pianoMusic.paused) {
+        pianoMusic.play().catch(err => {
+          console.warn("Autoplay blocked:", err);
+        });
+      }
+    }, { once: true });
+     const hoverSfx = document.getElementById('hover-sfx');
+  const clickSfx = document.getElementById('click-sfx');
+  const buttons = document.querySelectorAll('.nav-btn');
+
+  buttons.forEach(btn => {
+    btn.addEventListener('pointerenter', () => {
+      hoverSfx.currentTime = 0;
+      hoverSfx.play().catch(() => {});
+    });
+
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const target = btn.getAttribute('data-href');
+
+      clickSfx.currentTime = 0;
+      clickSfx.play().catch(() => {
+        window.location.href = target;
+      });
+
+      setTimeout(() => {
+        window.location.href = target;
+      }, 200);
+    });
+  });
+  </script>
+</body>
+</html>

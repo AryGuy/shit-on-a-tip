@@ -1,0 +1,132 @@
+body {
+  background-color: #000;
+  color: #ffffff;
+  font-family: 'Press Start 2P', monospace;
+  text-align: center;
+  padding: 40px;
+  overflow-x: hidden;
+  background-image: repeating-linear-gradient(
+    45deg,
+    #1a1a1a,
+    #1a1a1a 10px,
+    #111 10px,
+    #111 20px
+  );
+}
+
+h1 {
+  font-size: 1.2rem;
+  letter-spacing: 2px;
+  margin-bottom: 30px;
+  background-color: #fff;
+  color: #000;
+  padding: 20px;
+  display: inline-block;
+  border: 4px dashed #333;
+  text-shadow: none;
+}
+
+#coin-display {
+  font-family: 'Press Start 2P', cursive;
+  color: gold;
+  text-shadow: 2px 2px #000;
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+#carousel-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 20px 0;
+  gap: 20px;
+}
+
+#character-image {
+  width: 250px;
+  height: 250px;
+  background-color: #111;
+  border: 4px dashed #ba732a;
+  padding: 10px;
+  image-rendering: pixelated;
+  filter: contrast(120%);
+  box-shadow: 0 0 20px #ba732a;
+}
+
+#character-name {
+  font-size: 1rem;
+  margin: 10px 0;
+  color: #ffbe4d;
+  text-shadow: 1px 1px 0 #000;
+}
+
+button {
+  background-color: #ba732a;
+  border: 3px solid white;
+  color: black;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.7rem;
+  padding: 10px 20px;
+  margin: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+  box-shadow: 0 0 0 3px black;
+}
+
+button:hover {
+  background-color: #ffbe4d;
+  transform: scale(1.05);
+  box-shadow: 0 0 10px #ffbe4d;
+}
+
+#select-btn {
+  background-color: #ffbe4d;
+  color: #000;
+  border-color: #fff;
+  font-size: 0.8rem;
+  margin-top: 10px;
+}
+
+#select-btn:hover {
+  background-color: #fff;
+  color: #ba732a;
+  border-color: #ba732a;
+}
+
+#start-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  filter: grayscale(100%);
+}
+
+#chosen-list {
+  list-style: none;
+  padding: 0;
+  margin: 10px auto 20px;
+  max-width: 300px;
+}
+
+#chosen-list li {
+  background: #222;
+  border: 2px solid #ffbe4d;
+  margin: 5px;
+  padding: 5px;
+  font-size: 0.7rem;
+  color: white;
+}
+
+.return-btn {
+  background-color: #ffbe4d;
+  color: #000;
+  font-size: 0.7rem;
+  border: 3px solid white;
+  padding: 10px 20px;
+  margin-top: 20px;
+}
+
+.return-btn:hover {
+  background-color: #fff;
+  color: #ba732a;
+  border-color: #ba732a;
+}

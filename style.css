@@ -1,0 +1,267 @@
+/* General reset */
+* {
+  box-sizing: border-box;
+  image-rendering: pixelated;
+}
+
+body {
+  background-color: #000;
+  color: #fff;
+  font-family: 'Press Start 2P', cursive;
+  margin: 0;
+  text-align: center;
+  padding: 50px 20px;
+  background-image: repeating-linear-gradient(
+    45deg,
+    #1a1a1a,
+    #1a1a1a 10px,
+    #111 10px,
+    #111 20px
+  );
+}
+
+h1 {
+  font-size: 1.1em;
+  line-height: 2em;
+  margin-bottom: 40px;
+  background-color: white;
+  color: black;
+  display: inline-block;
+  padding: 18px;
+  border: 4px dashed #333;
+  text-shadow:
+    -2px -2px 0 #000,
+     2px -2px 0 #000,
+    -2px  2px 0 #000,
+     2px  2px 0 #000;
+}
+
+#score {
+  font-size: 14px;
+  margin: 20px 0;
+}
+
+#chosen-targets {
+  font-size: 12px;
+  margin-bottom: 20px;
+}
+
+.game-container {
+  display: flex;
+  justify-content: center;
+  gap: 60px;
+  margin: 30px 0;
+}
+
+.profile {
+  font-size: 1.5em;
+  padding: 50px;
+  background-color: #ba732a;
+  border: 4px solid white;
+  width: 160px;
+  height: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 0 0 4px black;
+  transition: transform 0.2s ease;
+}
+
+.profile.selected {
+  outline: 3px dashed #ffbe4d;
+  transform: scale(1.05);
+}
+
+button {
+  font-family: 'Press Start 2P', cursive;
+  padding: 20px 30px;
+  font-size: 0.55em;
+  background-color: #ba732a;
+  color: black;
+  border: 2px solid white;
+  margin: 10px;
+  cursor: pointer;
+  box-shadow: 0 0 0 3px black;
+  transition: background 0.3s, transform 0.1s;
+}
+
+button:hover {
+  background-color: #ffbe4d;
+  transform: scale(1.04);
+}
+
+#reveal-count {
+  font-size: 10px;
+  color: #aaa;
+  margin: 10px 0;
+}
+
+.achievement-popup {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background-color: white;
+  color: black;
+  padding: 20px;
+  font-size: 10px;
+  font-family: 'Press Start 2P', cursive;
+  border: 3px solid #ba732a;
+  box-shadow: 0 0 0 3px black;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.4s ease;
+  z-index: 9999;
+}
+
+.achievement-popup.show {
+  opacity: 1;
+}
+
+
+body {
+  background: #111;
+  color: #fff;
+  font-family: sans-serif;
+  text-align: center;
+  padding-top: 30px;
+}
+
+#score {
+  font-size: 1.5rem;
+  margin-bottom: 20px;
+}
+
+.game-container {
+  display: flex;
+  justify-content: center;
+  gap: 50px;
+  margin-bottom: 30px;
+}
+
+.profile {
+  width: 150px;
+  height: 150px;
+  background-color: #444;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.2rem;
+  border-radius: 10px;
+}
+
+.profile.selected {
+  border: 3px solid yellow;
+}
+
+.buttons {
+  margin-bottom: 20px;
+}
+
+button {
+  padding: 10px 20px;
+  font-size: 1rem;
+  margin: 5px;
+  cursor: pointer;
+  border-radius: 8px;
+  border: none;
+  transition: transform 0.1s ease;
+}
+
+/* Bounce effect when clicked */
+button:active {
+  transform: scale(0.95);
+}
+
+@keyframes bounceClick {
+  0% { transform: scale(1); }
+  50% { transform: scale(0.9); }
+  100% { transform: scale(1); }
+}
+
+button.clicked {
+  animation: bounceClick 0.2s ease;
+}
+.achievement-popup {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0, 0, 0, 0.85);
+  color: #ffe082;
+  border: 2px solid #ba732a;
+  padding: 16px 24px;
+  border-radius: 10px;
+  font-size: 1.1rem;
+  font-family: 'Oswald', sans-serif;
+  box-shadow: 0 0 10px #ba732a, 0 0 20px #fff3;
+  opacity: 0;
+  pointer-events: none;
+  transition: all 0.4s ease;
+  z-index: 9999;
+}
+
+.achievement-popup.show {
+  opacity: 1;
+  pointer-events: auto;
+  top: 60px;
+}
+#open-store-btn {
+  display: block;
+  margin: 12px auto;
+  font-family: 'Press Start 2P', cursive;
+  font-size: 10px;
+  background: #222;
+  color: white;
+  border: 1px solid white;
+  cursor: pointer;
+  padding: 8px 12px;
+  transition: background 0.2s;
+}
+
+#open-store-btn:hover {
+  background: #333;
+}
+
+@keyframes myGlance {
+  0%   { opacity: 0; transform: scale(0.8) rotate(0deg); text-shadow: none; }
+  25%  { opacity: 1; transform: scale(1.2) rotate(5deg); text-shadow: 2px 0 6px cyan; }
+  50%  { opacity: 0.7; transform: scale(1) rotate(-3deg); text-shadow: 4px 0 12px cyan; }
+  75%  { opacity: 1; transform: scale(1.1) rotate(2deg); text-shadow: 2px 0 6px cyan; }
+  100% { opacity: 1; transform: scale(1) rotate(0deg); text-shadow: none; }
+}
+
+.my-glance-effect {
+  animation: myGlance 0.6s ease forwards;
+}
+/* ─────────────── Button Flash Animation ─────────────── */
+@keyframes glance-flash {
+  0%   { background-color: #008b8b; color: #fff; transform: scale(1); }
+  25%  { background-color: #00ced1; transform: scale(1.05); }
+  50%  { background-color: #008b8b; transform: scale(1.1); }
+  75%  { background-color: #00ced1; transform: scale(1.05); }
+  100% { background-color: #008b8b; color: #fff; transform: scale(1); }
+}
+
+.glance-active {
+  animation: glance-flash 0.5s linear;
+}
+
+/* ─────────────── Card Text Flash ─────────────── */
+@keyframes card-flash {
+  0%   { color: #00ced1; text-shadow: 0 0 0px #008b8b; }
+  50%  { color: #fff; text-shadow: 0 0 10px #00ced1; }
+  100% { color: #00ced1; text-shadow: 0 0 0px #008b8b; }
+}
+
+.card-flash {
+  animation: card-flash 0.4s linear;
+}
+#timer-display {
+  text-shadow: 0 0 6px rgba(255, 200, 50, 0.6),
+               0 0 12px rgba(255, 200, 50, 0.4);
+  transition: text-shadow 0.2s ease-in-out;
+  opacity: 0.8; /* lowkey transparent */
+  font-size: 0.8em; /* subtle size */
+}
+

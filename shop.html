@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>It Yo Boy Zhiy Shop</title>
+  <link rel="stylesheet" href="shop.css">
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+<body>
+  <div id="shop-container">
+    <!-- ===== Coin Display ===== -->
+    <div id="coin-display">🪙 COINS: <span id="coin-count">0</span></div>
+
+    <!-- ===== Zhiynl Sprite ===== -->
+    <div id="zhiynl-container">
+      <img id="zhiynl-sprite" src="assets/zhiynl-neutral1.png" alt="Zhiynl">
+    </div>
+
+    <!-- ===== Dialogue Box ===== -->
+    <div id="dialogue-box">
+      <p id="zhiynl-dialogue">DR PEAK IN THE HOUSE</p>
+    </div>
+    
+<!-- ===== Conversation Box ===== -->
+<div id="conversation-box">
+  <h3>SPEAK</h3>
+  <button class="dialogue-option" data-replies='["HOW YOU BEEN COUSIN WHAT U HIT ME UP FOR","THEY CALL ME CP KING","EPSTEINS ACCOMPLICE", "A WHOLE TONNA NAMES", "BUT YOU CAN CALL ME...", "Zhiy."]'>
+    Who are you?
+  </button>
+  <button class="dialogue-option" data-replies='["I GAVE LUCY 700 SIBLINGS WHO ARE NOT AUTISTIC UNLIKE HIMSELF","AS A RESULT OF LUCYS MOM BEING SO FAT AND PREGNANT WITH CHILDREN, THE BABIES GET SUCKED INTO A TIME DISPARITY THAT SENDS ME BACK IN TIME", "THEN I SHOT HIM"]'>
+    Who's Lucy?
+  </button>
+  <button class="dialogue-option" data-replies='["SO I WAS SPANKING THIS STUPID LITTLE NIGGER FOR CROSSING MY FRONT LAWN AND HE WAS ASKING FOR HIS FREEDOM","AND SO I GO","ya ya ofc my bad bro","AND I THEN PULL OUT AN MP5 AND GLAZE HIS ASS WITH FREEDOM","DONT EVER FUCKING ASK YOUR MASTERS FOR FREEDOM","LET ALONE TIME OFF THE COTTON FARMS"]'>
+    Freedom?
+  </button>
+  <button class="dialogue-option" data-replies='["Everyone there is fucking insane.","IF I DO IT","I GET AN ARMY OF GOONS","WHO WILL LICK MY COCK IF I ASKED THEM"]'>
+    I heard you wanted to overthrow the Japanese Government. Why?
+  </button>
+
+  <!-- Optional hidden button for character-specific actions -->
+  <button id="andy-special" style="display:none;">Andy Exclusive Action</button>
+</div>
+    <!-- ===== FX Container ===== -->
+    <div id="fx-container"></div>
+
+    <!-- ===== Audio ===== -->
+    <audio id="insult-sfx" src="assets/insult.mp3"></audio>
+    <audio id="insufficient-sfx" src="assets/insufficient.mp3"></audio>
+    <audio id="purchase-sfx" src="assets/purchase.mp3" preload="auto"></audio>
+    <audio id="shop-music" autoplay loop></audio>
+    <audio id="hover-sfx" src="assets/shopbuttonhover.mp3" preload="auto"></audio>
+    <audio id="click-sfx" src="assets/shopbuttonclick.mp3" preload="auto"></audio>
+
+    <!-- ===== Buttons ===== -->
+    <button id="talk-btn">💬 Conversation</button>
+    <button id="buy-btn">🛒 BUY</button>
+    <button id="back-btn" style="display: none;">← Back</button>
+    <button id="exit-btn">GET THE FUCK OUT</button>
+    <button id="mute-btn">🔊</button>
+
+    <!-- ===== Shop Tabs ===== -->
+<div id="shop-notebook">
+  <div id="shop-tabs">
+    <button class="tab-btn active" data-tab="items">Items</button>
+    <button class="tab-btn" data-tab="characters">Characters</button>
+    <button class="tab-btn" data-tab="misc">Misc</button>
+  </div>
+
+    <!-- ===== Shop Sections ===== -->
+    <div id="shop-sections">
+      <div class="shop-section" id="tab-items">
+        <h3>Items:</h3>
+        <ul>
+          <li><button class="buy-item" data-cost="1" data-id="Packaged Air" data-description="Is this a scam?">Packaged Air - 1 coin</button></li>
+          <li><button class="buy-item" data-cost="100" data-id="Tax Evasion" data-description="2x Coin Gain">Tax Evasion (2x Coin Gain) - 100 coins</button></li>
+          <li><button class="buy-item" data-cost="200" data-id="Money Printing Machine" data-description="5x Coin Gain (Does not stack)">Money Printing Machine (5x Coin Gain) - 200 coins</button></li>
+          <li><button class="buy-item" data-id="Kill The Government" data-cost="1000" data-description="10x Cash Gain (Still does not stack)">Kill The Government - 1000 coins</button>
+        </ul>
+      </div>
+
+      <div class="shop-section hidden" id="tab-characters">
+        <h3>Characters:</h3>
+        <ul>
+          <li><button class="buy-item" data-cost="500" data-type="character" data-id="Andy" data-description='"We in Japan, why the hell we going for Chinese?"'>Andy - 500 coins</button></li>
+          <li><button class="buy-item" data-cost="500" data-type="character" data-id="Sai" data-description='"Watch me destroy a 5700$ gold bar with nitric acid."'>Sai - 500 coins</button></li>
+        </ul>
+      </div>
+
+      <div class="shop-section hidden" id="tab-misc">
+        <h3>Misc:</h3>
+        <ul>
+          <li><button class="buy-item" data-cost="200" data-type="misc" data-id="Hard Mode" data-description="Self explanatory">Hard Mode - 200 Coins</button></li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ===== Item Preview (INSIDE BORDER) ===== -->
+    <div id="item-preview" class="hidden"></div>
+  </div>
+  </div>
+
+  <script src="shop.js"></script>
+  <script src="conversation.js"></script>
+</body>
+</html>
