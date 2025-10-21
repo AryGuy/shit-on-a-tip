@@ -193,28 +193,8 @@
     });
 
     document.getElementById("high-score").textContent = localStorage.getItem("highScore") || 0;
-    // === Coin Loading with Nuisance Security ===
+    document.getElementById("coin-count").textContent = localStorage.getItem("coins") || 0;
 
-// 1. Define the "Secret" Constants (MUST match shop.js)
-const COINS_KEY_ENCODED = "c_data_e7x"; 
-const COIN_SALT = 1337;                  
-
-let coins = 0; 
-const encodedCoins = parseInt(localStorage.getItem(COINS_KEY_ENCODED)) || 0;
-
-if (encodedCoins > COIN_SALT) {
-    // Decode: Subtract the salt
-    coins = encodedCoins - COIN_SALT; 
-} else {
-    coins = 0; // Default if no data or invalid data
-}
-
-// 2. Display the Decoded Value
-document.getElementById("coin-count").textContent = coins;
-
-// Your High Score display can stay the same
-document.getElementById("high-score").textContent = localStorage.getItem("highScore") || 0;
-// --- Original line REMOVED: document.getElementById("coin-count").textContent = localStorage.getItem("coins") || 0;
     updateDisplay();
   </script>
 
