@@ -231,7 +231,7 @@ const displayName = document.getElementById("individual-name");
 const storedChar = sessionStorage.getItem("playerCharacter");
 
 if (storedChar) {
-  displayIcon.src = `assets/chars/${storedChar}.png`;
+  displayIcon.src = `./assets/chars/${storedChar}.png`;
   displayName.textContent = storedChar;
 } else {
   displayIcon.src = "";
