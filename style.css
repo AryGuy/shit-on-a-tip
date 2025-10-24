@@ -1,137 +1,52 @@
-/* General reset */
+/* ─────────────── General Reset ─────────────── */
 * {
   box-sizing: border-box;
   image-rendering: pixelated;
+  margin: 0;
+  padding: 0;
 }
 
 body {
-  background-color: #000;
-  color: #fff;
+  background-color: #111;
+  color: #eee;
   font-family: 'Press Start 2P', cursive;
-  margin: 0;
   text-align: center;
   padding: 50px 20px;
   background-image: repeating-linear-gradient(
     45deg,
     #1a1a1a,
-    #1a1a1a 10px,
-    #111 10px,
-    #111 20px
+    #1a1a1a 12px,
+    #111 12px,
+    #111 24px
   );
 }
 
+/* ─────────────── Headings ─────────────── */
 h1 {
-  font-size: 1.1em;
+  font-size: 1.2em;
   line-height: 2em;
-  margin-bottom: 40px;
-  background-color: white;
-  color: black;
   display: inline-block;
-  padding: 18px;
+  padding: 16px 24px;
+  margin-bottom: 40px;
   border: 4px dashed #333;
-  text-shadow:
-    -2px -2px 0 #000,
-     2px -2px 0 #000,
-    -2px  2px 0 #000,
-     2px  2px 0 #000;
+  background: #fff;
+  color: #111;
+  text-shadow: none;
+  border-radius: 6px;
 }
 
-#score {
-  font-size: 14px;
-  margin: 20px 0;
-}
-
-#chosen-targets {
-  font-size: 12px;
-  margin-bottom: 20px;
-}
-
-.game-container {
-  display: flex;
-  justify-content: center;
-  gap: 60px;
-  margin: 30px 0;
-}
-
-.profile {
-  font-size: 1.5em;
-  padding: 50px;
-  background-color: #ba732a;
-  border: 4px solid white;
-  width: 160px;
-  height: 160px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  box-shadow: 0 0 0 4px black;
-  transition: transform 0.2s ease;
-}
-
-.profile.selected {
-  outline: 3px dashed #ffbe4d;
-  transform: scale(1.05);
-}
-
-button {
-  font-family: 'Press Start 2P', cursive;
-  padding: 20px 30px;
-  font-size: 0.55em;
-  background-color: #ba732a;
-  color: black;
-  border: 2px solid white;
-  margin: 10px;
-  cursor: pointer;
-  box-shadow: 0 0 0 3px black;
-  transition: background 0.3s, transform 0.1s;
-}
-
-button:hover {
-  background-color: #ffbe4d;
-  transform: scale(1.04);
-}
-
-#reveal-count {
-  font-size: 10px;
-  color: #aaa;
-  margin: 10px 0;
-}
-
-.achievement-popup {
-  position: fixed;
-  top: 20px;
-  right: 20px;
-  background-color: white;
-  color: black;
-  padding: 20px;
-  font-size: 10px;
-  font-family: 'Press Start 2P', cursive;
-  border: 3px solid #ba732a;
-  box-shadow: 0 0 0 3px black;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity 0.4s ease;
-  z-index: 9999;
-}
-
-.achievement-popup.show {
-  opacity: 1;
-}
-
-
-body {
-  background: #111;
-  color: #fff;
-  font-family: sans-serif;
-  text-align: center;
-  padding-top: 30px;
-}
-
+/* ─────────────── Score / Targets ─────────────── */
 #score {
   font-size: 1.5rem;
   margin-bottom: 20px;
 }
 
+#chosen-targets {
+  font-size: 0.9rem;
+  margin-bottom: 20px;
+}
+
+/* ─────────────── Game Container ─────────────── */
 .game-container {
   display: flex;
   justify-content: center;
@@ -143,125 +58,137 @@ body {
   width: 150px;
   height: 150px;
   background-color: #444;
+  border: 4px solid #ba732a;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 1.2rem;
-  border-radius: 10px;
+  border-radius: 12px;
+  cursor: pointer;
+  box-shadow: 0 4px 0 #000;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .profile.selected {
-  border: 3px solid yellow;
+  border: 3px solid #ffbe4d;
+  transform: scale(1.05);
+  box-shadow: 0 6px 0 #000;
 }
 
-.buttons {
-  margin-bottom: 20px;
-}
-
+/* ─────────────── Buttons ─────────────── */
 button {
-  padding: 10px 20px;
-  font-size: 1rem;
-  margin: 5px;
-  cursor: pointer;
-  border-radius: 8px;
-  border: none;
-  transition: transform 0.1s ease;
-}
-
-/* Bounce effect when clicked */
-button:active {
-  transform: scale(0.95);
-}
-
-@keyframes bounceClick {
-  0% { transform: scale(1); }
-  50% { transform: scale(0.9); }
-  100% { transform: scale(1); }
-}
-
-button.clicked {
-  animation: bounceClick 0.2s ease;
-}
-.achievement-popup {
-  position: fixed;
-  top: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(0, 0, 0, 0.85);
-  color: #ffe082;
-  border: 2px solid #ba732a;
-  padding: 16px 24px;
-  border-radius: 10px;
-  font-size: 1.1rem;
-  font-family: 'Oswald', sans-serif;
-  box-shadow: 0 0 10px #ba732a, 0 0 20px #fff3;
-  opacity: 0;
-  pointer-events: none;
-  transition: all 0.4s ease;
-  z-index: 9999;
-}
-
-.achievement-popup.show {
-  opacity: 1;
-  pointer-events: auto;
-  top: 60px;
-}
-#open-store-btn {
-  display: block;
-  margin: 12px auto;
   font-family: 'Press Start 2P', cursive;
-  font-size: 10px;
-  background: #222;
-  color: white;
-  border: 1px solid white;
+  padding: 12px 24px;
+  font-size: 0.8em;
+  background-color: #ba732a;
+  color: #111;
+  border: 2px solid #fff;
+  border-radius: 8px;
   cursor: pointer;
-  padding: 8px 12px;
-  transition: background 0.2s;
+  box-shadow: 0 3px 0 #000;
+  transition: transform 0.15s ease, background 0.2s ease;
+  margin: 10px 15px; /* increased spacing */
 }
 
-#open-store-btn:hover {
-  background: #333;
+button:hover {
+  background-color: #ffbe4d;
+  transform: translateY(-2px);
 }
 
+button:active {
+  transform: translateY(1px) scale(0.97);
+}
+
+#forfeit-btn {
+    transform: translate3d(0,0,0);
+}
+
+
+/* ─────────────── Animations ─────────────── */
+/* Light Shake */
+@keyframes shake-light {
+  0%, 100% { transform: translate(1px, 1px) rotate(0deg); }
+  25% { transform: translate(-1px, 0) rotate(-1deg); }
+  50% { transform: translate(1px, 0) rotate(1deg); }
+  75% { transform: translate(-1px, 0) rotate(-1deg); }
+}
+
+.screen-shake-light {
+  animation: shake-light 0.2s ease-in-out both;
+}
+
+/* Heavy Shake */
+@keyframes shake-heavy {
+  0%, 100% { transform: translate(2px, 2px) rotate(0deg); }
+  20%, 60% { transform: translate(-2px, -2px) rotate(-1deg); }
+  40%, 80% { transform: translate(2px, -2px) rotate(1deg); }
+}
+
+.screen-shake-heavy {
+  animation: shake-heavy 0.3s ease-in-out both;
+}
+
+/* Glance Effect */
 @keyframes myGlance {
-  0%   { opacity: 0; transform: scale(0.8) rotate(0deg); text-shadow: none; }
-  25%  { opacity: 1; transform: scale(1.2) rotate(5deg); text-shadow: 2px 0 6px cyan; }
-  50%  { opacity: 0.7; transform: scale(1) rotate(-3deg); text-shadow: 4px 0 12px cyan; }
-  75%  { opacity: 1; transform: scale(1.1) rotate(2deg); text-shadow: 2px 0 6px cyan; }
-  100% { opacity: 1; transform: scale(1) rotate(0deg); text-shadow: none; }
+  0% { opacity: 0; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.1); text-shadow: 2px 2px 6px cyan; }
+  100% { opacity: 1; transform: scale(1); text-shadow: none; }
 }
 
 .my-glance-effect {
   animation: myGlance 0.6s ease forwards;
 }
-/* ─────────────── Button Flash Animation ─────────────── */
-@keyframes glance-flash {
-  0%   { background-color: #008b8b; color: #fff; transform: scale(1); }
-  25%  { background-color: #00ced1; transform: scale(1.05); }
-  50%  { background-color: #008b8b; transform: scale(1.1); }
-  75%  { background-color: #00ced1; transform: scale(1.05); }
-  100% { background-color: #008b8b; color: #fff; transform: scale(1); }
-}
 
-.glance-active {
-  animation: glance-flash 0.5s linear;
-}
-
-/* ─────────────── Card Text Flash ─────────────── */
+/* Card / Button Flash */
 @keyframes card-flash {
-  0%   { color: #00ced1; text-shadow: 0 0 0px #008b8b; }
-  50%  { color: #fff; text-shadow: 0 0 10px #00ced1; }
-  100% { color: #00ced1; text-shadow: 0 0 0px #008b8b; }
+  0%, 100% { color: #00ced1; text-shadow: none; }
+  50% { color: #fff; text-shadow: 0 0 10px #00ced1; }
 }
 
 .card-flash {
   animation: card-flash 0.4s linear;
 }
-#timer-display {
-  text-shadow: 0 0 6px rgba(255, 200, 50, 0.6),
-               0 0 12px rgba(255, 200, 50, 0.4);
-  transition: text-shadow 0.2s ease-in-out;
-  opacity: 0.8; /* lowkey transparent */
-  font-size: 0.8em; /* subtle size */
+
+/* ─────────────── Achievement Popup ─────────────── */
+.achievement-popup {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: white;
+    color: black;
+    padding: 20px;
+    font-size: 10px;
+    font-family: 'Press Start 2P', cursive;
+    border: 3px solid #ba732a;
+    box-shadow: 0 0 0 3px black;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+    z-index: 999999;
+    word-wrap: break-word;
+    line-height: 1.2em;
+    text-align: center;
+    width: 600px;       /* make it longer horizontally */
+    max-width: 80%;     /* responsive on smaller screens */
 }
 
+.achievement-popup.show {
+    opacity: 1;
+}
+
+
+/* ─────────────── Butterfly Icon ─────────────── */
+.butterfly {
+  width: 85px;
+  height: 85px;
+  background: url('assets/butterfly.png') no-repeat center/contain;
+  cursor: pointer;
+  z-index: 9999;
+}
+.butterfly:hover {
+  transform: scale(1.1) rotate(-5deg);
+  box-shadow: 0 4px 12px rgba(183,137,80,0.3),
+              0 0 0 4px rgba(183,137,80,0.25); /* square-ish highlight */
+  outline: 2px #d9a15f;    /* optional dashed frame for extra cozy vibe */
+}

@@ -279,6 +279,32 @@ body {
 .spin-glitch {
   animation: spinny 1.5s ease-in-out;
 }
+.achievement-popup {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: white;
+    color: black;
+    padding: 20px;
+    font-size: 10px;
+    font-family: 'Press Start 2P', cursive;
+    border: 3px solid #ba732a;
+    box-shadow: 0 0 0 3px black;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+    z-index: 999999;
+    word-wrap: break-word;
+    line-height: 1.2em;
+    text-align: center;
+    width: 600px;       /* make it longer horizontally */
+    max-width: 80%;     /* responsive on smaller screens */
+  }
+
+  .achievement-popup.show {
+    opacity: 1;
+  }
 /* ===================================
    SHOP PAGE / CATEGORY LAYOUT
 =================================== */

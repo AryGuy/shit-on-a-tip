@@ -8,6 +8,9 @@
 </head>
 <body>
   <div id="shop-container">
+    <!-- Achievement popup container -->
+  <div id="achievement-popup" class="achievement-popup"></div>
+    
     <!-- ===== Coin Display ===== -->
     <div id="coin-display">🪙 COINS: <span id="coin-count">0</span></div>
 
@@ -15,6 +18,12 @@
     <div id="zhiynl-container">
       <img id="zhiynl-sprite" src="assets/zhiynl-neutral1.png" alt="Zhiynl">
     </div>
+    
+      <!-- Optional Boombox Container -->
+<div id="boombox-container" style="display:none; position: absolute; bottom: 20px; right: 20px;">
+  <img src="assets/boombox.png" alt="Boombox" style="width:80px;">
+  <audio id="boombox-music" src="assets/saveeurope-hardstyle.mp3" loop></audio>
+</div>
 
     <!-- ===== Dialogue Box ===== -->
     <div id="dialogue-box">
@@ -48,6 +57,7 @@
     <audio id="insufficient-sfx" src="assets/insufficient.mp3"></audio>
     <audio id="purchase-sfx" src="assets/purchase.mp3" preload="auto"></audio>
     <audio id="shop-music" autoplay loop></audio>
+    <audio id="achievement-sfx" src="achievement.mp3" preload="auto"></audio>
     <audio id="hover-sfx" src="assets/shopbuttonhover.mp3" preload="auto"></audio>
     <audio id="click-sfx" src="assets/shopbuttonclick.mp3" preload="auto"></audio>
 
@@ -83,6 +93,7 @@
         <ul>
           <li><button class="buy-item" data-cost="500" data-type="character" data-id="Andy" data-description='"We in Japan, why the hell we going for Chinese?"'>Andy - 500 coins</button></li>
           <li><button class="buy-item" data-cost="500" data-type="character" data-id="Sai" data-description='"Watch me destroy a 5700$ gold bar with nitric acid."'>Sai - 500 coins</button></li>
+          <li><button class="buy-item" data-cost="500" data-type="character" data-id="Kj" data-description='"YOU FUCKING MMMMMOOOOONNNNNNNKKKKKKKEEEEYYYYYY"'>Kj - 500 coins</button></li>
         </ul>
       </div>
 
@@ -94,11 +105,12 @@
       </div>
     </div>
 
+
     <!-- ===== Item Preview (INSIDE BORDER) ===== -->
     <div id="item-preview" class="hidden"></div>
   </div>
   </div>
-
+  <script src="coinCore.js"></script>
   <script src="shop.js"></script>
   <script src="conversation.js"></script>
 </body>

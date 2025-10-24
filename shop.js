@@ -15,18 +15,27 @@ window.addEventListener("load", setRandomSprite);
 
 
     /* ======================= Music Setup ======================= */
-    const trackList = ['assets/shop-theme.mp3','assets/StoreDay2.mp3','assets/StoreDay3.mp3','assets/StoreDay4.mp3'];
-    const shopMusic = document.getElementById('shop-music');
-    shopMusic.src = trackList[Math.floor(Math.random() * trackList.length)];
+const trackList = ['assets/shop-theme.mp3','assets/StoreDay2.mp3','assets/StoreDay3.mp3','assets/StoreDay4.mp3'];
+const shopMusic = document.getElementById('shop-music');
+const fromTamper = sessionStorage.getItem('completedTamper') === 'true';
 
-    const savedTime = sessionStorage.getItem('musicTime');
-    if(savedTime !== null) shopMusic.currentTime = parseFloat(savedTime);
+if (fromTamper) {
+  shopMusic.src = 'assets/AllTheThings.mp3';
+} else {
+  const trackList = ['assets/shop-theme.mp3','assets/StoreDay2.mp3','assets/StoreDay3.mp3','assets/StoreDay4.mp3'];
+  shopMusic.src = trackList[Math.floor(Math.random() * trackList.length)];
+}
 
-    document.addEventListener('click', () => {
-      if(shopMusic.paused) shopMusic.play().catch(err=>console.warn("Autoplay blocked:", err));
-    }, { once: true });
+// Try autoplay
+shopMusic.play().catch(() => {
+  const clickToPlay = () => {
+    shopMusic.play().catch(err => console.warn("Audio still blocked:", err));
+    document.removeEventListener('click', clickToPlay);
+  };
+  document.addEventListener('click', clickToPlay);
+});
 
-    document.getElementById('exit-btn').addEventListener('click', () => window.location.href='index.html');
+document.getElementById('exit-btn').addEventListener('click', () => window.location.href='index.html');
     
     /* ========== Hover & Click Sounds for Buttons ========== */
 const hoverSfx = document.getElementById('hover-sfx');
@@ -55,36 +64,6 @@ const observer = new MutationObserver(() => {
 });
 observer.observe(document.body, { childList: true, subtree: true });
 
-
-    /* ======================= Coin Setup ======================= */
-    let coins = parseInt(localStorage.getItem("coins")) || 0;
-    let coinMultiplier = parseInt(localStorage.getItem("coinMultiplier") || "1");
-
-    const coinDisplay = document.getElementById("coin-count");
-    coinDisplay.textContent = coins;
-
-    const taxButton = document.querySelector('.buy-item[data-id="Tax Evasion"]');
-if (parseInt(localStorage.getItem("coinMultiplier") || "1") > 1) {
-    taxButton.disabled = true;
-    taxButton.textContent = "Tax Evasion - ✅ Activated";
-    taxButton.style.opacity = "0.5";
-    taxButton.style.cursor = "not-allowed";
-}
-    const moneyMachineBtn = document.querySelector('.buy-item[data-id="Money Printing Machine"]');
-if (parseInt(localStorage.getItem("coinMultiplier") || "1") >= 5) {
-  moneyMachineBtn.disabled = true;
-  moneyMachineBtn.textContent = "Money Printing Machine - ✅ Activated";
-  moneyMachineBtn.style.opacity = "0.5";
-  moneyMachineBtn.style.cursor = "not-allowed";
-}
-// Kill The Government
-const killGovBtn = document.querySelector('.buy-item[data-id="Kill The Government"]');
-if (coinMultiplier >= 10) {
-  killGovBtn.disabled = true;
-  killGovBtn.textContent = "Kill The Government - ✅ Activated";
-  killGovBtn.style.opacity = "0.5";
-  killGovBtn.style.cursor = "not-allowed";
-}
 /* ======================= Hard Mode Load Check ======================= */
 const hardModeBtn = document.querySelector('.buy-item[data-id="Hard Mode"]');
 if (localStorage.getItem("hardModeBought") === "true" && hardModeBtn) {
@@ -92,6 +71,51 @@ if (localStorage.getItem("hardModeBought") === "true" && hardModeBtn) {
     hardModeBtn.textContent = "Hard Mode - ✅ Purchased";
     hardModeBtn.style.opacity = "0.5";
     hardModeBtn.style.cursor = "not-allowed";
+}
+
+// ======================= Achievement Check =======================
+function checkPreIndividualsAchievement() {
+  const unlocked = JSON.parse(localStorage.getItem("unlockedCharacters") || "[]");
+
+  if (unlocked.length >= 3) { // 3 or more characters unlocked
+    const achievements = JSON.parse(localStorage.getItem("achievements") || "{}");
+
+    if (!achievements.preIndividuals) {
+      achievements.preIndividuals = "true";
+      localStorage.setItem("achievements", JSON.stringify(achievements));
+
+      // Optional visual feedback
+      const popup = document.getElementById("achievement-popup");
+      if (popup) {
+        popup.innerHTML = "🏆 Achievement Unlocked: Pre-Individuals";
+        popup.classList.add("show");
+        setTimeout(() => popup.classList.remove("show"), 4000);
+      }
+
+      const achSfx = document.getElementById("achievement-sfx");
+      if (achSfx) { achSfx.currentTime = 0; achSfx.play().catch(()=>{}); }
+    }
+  }
+}
+// ======================= Boombox Easter Egg Achievement =======================
+function checkBoomboxShop() {
+  const achievements = JSON.parse(localStorage.getItem("achievements") || "{}");
+
+  if (!achievements.boomboxEasterEgg) {
+    achievements.boomboxEasterEgg = "true";
+    localStorage.setItem("achievements", JSON.stringify(achievements));
+
+    // Optional visual feedback
+    const popup = document.getElementById("achievement-popup");
+    if (popup) {
+      popup.innerHTML = "🏆 Achievement Unlocked: #SAVEEUROPE";
+      popup.classList.add("show");
+      setTimeout(() => popup.classList.remove("show"), 4000);
+    }
+
+    const achSfx = document.getElementById("achievement-sfx");
+    if (achSfx) { achSfx.currentTime = 0; achSfx.play().catch(()=>{}); }
+  }
 }
 
     /* ======================= Typewriter Effect ======================= */
@@ -152,186 +176,289 @@ function typeWriterEffect(text, element, delay=25, callback) {
       });
     });
 
+/* ======================= Purchase Logic ======================= */
+// ======= Authoritative item table =======
+const ITEMS = {
+  "Packaged Air": { cost: 1, type: "item" },
+  "Tax Evasion": { cost: 100, type: "upgrade", key: "upgrade_TaxEvasion" },
+  "Money Printing Machine": { cost: 200, type: "upgrade", key: "upgrade_MoneyMachine" },
+  "Kill The Government": { cost: 1000, type: "upgrade", key: "upgrade_KillGov" },
+  "Andy": { cost: 500, type: "character" },
+  "Sai": { cost: 500, type: "character" },
+  "Kj": { cost: 500, type: "character" },
+  "Hard Mode": { cost: 200, type: "misc" },
+};
 
-    /* ======================= Purchase Logic ======================= */
-let unlockedCharacters = JSON.parse(localStorage.getItem("unlockedCharacters") || "[]");
+// attach guarded purchase handler
+document.querySelectorAll('.buy-item').forEach(button => {
+  button.addEventListener('click', guardedBuy, { passive: false });
+});
 
-// helper to update UI
-function refreshShopItems() {
-  document.querySelectorAll(".buy-item").forEach(button => {
-    const itemType = button.dataset.type;
-    const itemId = button.dataset.id;
-    if (itemType === "character" && unlockedCharacters.includes(itemId)) {
-      button.textContent = `${itemId} - ✅ Owned`;
+function guardedBuy(ev) {
+  if (!ev.isTrusted) return;
+
+  const button = ev.currentTarget;
+  const itemId = (button.dataset.id || button.textContent.split(' - ')[0]).trim();
+  const item = ITEMS[itemId];
+  if (!item) return;
+
+  const domCost = parseInt(button.dataset.cost || '0', 10);
+  if (domCost !== item.cost) { flashTamperUI(button); return; }
+  if (!window.shopAPI || typeof window.shopAPI.spendCoins !== 'function') return;
+  if (!window.shopAPI.spendCoins(item.cost)) { handleInsufficientFunds(); return; }
+
+  handlePurchaseSuccess(itemId, item);
+}
+
+// small UI helpers
+
+const agarthaAudio = new Audio("assets/Agartha.mp3");
+
+function flashTamperUI(button) {
+  // Optional: show visual flag before redirect
+  button.classList.add('tamper-flag');
+  setTimeout(() => button.classList.remove('tamper-flag'), 1200);
+
+  // Redirect immediately
+  window.location.href = 'tamper.html';
+}
+
+function handleInsufficientFunds() {
+  // Screen shake
+  const shopContainer = document.getElementById("shop-container");
+  shopContainer.classList.add("shake");
+  setTimeout(() => shopContainer.classList.remove("shake"), 400);
+
+  // Play sound
+  const insufficientSfx = document.getElementById("insufficient-sfx");
+  if (insufficientSfx) {
+    insufficientSfx.currentTime = 0;
+    insufficientSfx.play().catch(err => console.warn("Audio blocked:", err));
+  }
+
+  // Zhiynl roast sequence
+  const roast = ["YOU", "ARE", "FUCKING", "BBBBBRRRRRRRRRRRRRRRRROOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE"];
+  let i = 0;
+
+  function nextRoastLine() {
+    if (i < roast.length) {
+      typeWriterEffect(roast[i], zhiynlDialogue, 25, () => {
+        i++;
+        setTimeout(nextRoastLine, 500);
+      });
+    } else {
+      // After BROKE, pick a random default insult
+      const defaultRoasts = [
+        "boohoo check yo wallet next time dog",
+        "HOP OFF SBG AND GO GET A JOB",
+        "BROKE BROKE BR",
+        "GET A LIFE NIGGA"
+      ];
+      const rand = Math.floor(Math.random() * defaultRoasts.length);
+      setTimeout(() => {
+        typeWriterEffect(defaultRoasts[rand], zhiynlDialogue, 25);
+      }, 1000);
+    }
+  }
+
+  nextRoastLine();
+}
+// ======= Unified purchase success handler =======
+function handlePurchaseSuccess(itemId, item) {
+  const button = document.querySelector(`.buy-item[data-id="${itemId}"]`) 
+                 || Array.from(document.querySelectorAll(".buy-item"))
+                         .find(b => b.textContent.startsWith(itemId));
+
+  // Upgrade items
+  if (item.type === 'upgrade') {
+    if (item.key && !localStorage.getItem(item.key)) localStorage.setItem(item.key, "true");
+    if (button) {
       button.disabled = true;
+      button.textContent = `${itemId} - ✅ Activated`;
+      button.style.opacity = "0.5";
+      button.style.cursor = "not-allowed";
+    }
+    new Audio("assets/chaching.mp3").play().catch(() => {});
+    typeWriterEffect(`${itemId} bought boy`, zhiynlDialogue, 25);
+    spawnMoneyFx();
+    return;
+  }
+
+  // Characters
+  // Characters
+if (item.type === 'character') {
+  let unlocked = JSON.parse(localStorage.getItem("unlockedCharacters") || "[]");
+  if (!unlocked.includes(itemId)) {
+    unlocked.push(itemId);
+    localStorage.setItem("unlockedCharacters", JSON.stringify(unlocked));
+    
+    // START OF THE SIMPLIFIED FIX: Apply UI changes directly to the button
+    const button = document.querySelector(`.buy-item[data-id="${itemId}"]`);
+    if (button) {
+        button.disabled = true;
+        button.textContent = `${itemId} - ✅ Unlocked`; // Changed from 'Activated' to 'Unlocked'
+        button.style.opacity = "0.5";
+        button.style.cursor = "not-allowed";
+    }
+    
+        checkPreIndividualsAchievement();
+    // END OF THE SIMPLIFIED FIX
+
+  }
+  const purchaseSfx = document.getElementById("purchase-sfx");
+  if (purchaseSfx) { purchaseSfx.currentTime = 0; purchaseSfx.play().catch(() => {}); }
+  spawnMoneyFx();
+  
+  // REMOVE THIS LINE: refreshShopItems(); // It's no longer needed for instant update
+
+  const zhiyLines = [
+    "I do not support human trafficking (HLEP IM BEING HELD HOSTAGE AND I HAVEMY FREEDOM OF SPEECH SEALED)",
+    "COME AGAIN RAHAHAH",
+    "OFFICER I SWEAR, HE JUST ENDED UP THERE"
+  ];
+  typeWriterEffect(zhiyLines[Math.floor(Math.random()*zhiyLines.length)], zhiynlDialogue, 25);
+  return;
+}
+
+  // Hard Mode
+  if (itemId === "Hard Mode") {
+    localStorage.setItem("hardModeBought", "true");
+    if (button) {
+      button.disabled = true;
+      button.textContent = `${itemId} - ✅ Purchased`;
+      button.style.opacity = "0.5";
+      button.style.cursor = "not-allowed";
+    }
+    new Audio("assets/chaching.mp3").play().catch(() => {});
+    typeWriterEffect(`You bought ${itemId} (you did not have to do this)`, zhiynlDialogue, 25);
+    spawnMoneyFx();
+    return;
+  }
+
+  // Regular items
+  if (button) {
+    new Audio("assets/chaching.mp3").play().catch(() => {});
+    typeWriterEffect(`Thanks for buy ${itemId} boy.`, zhiynlDialogue, 25);
+    spawnMoneyFx();
+  }
+}
+
+// Money FX
+function spawnMoneyFx(){
+  const container = document.getElementById("fx-container");
+  for(let i=0;i<12;i++){
+    const img=document.createElement("img");
+    img.src="assets/money-wings.gif";
+    img.classList.add("money-fx");
+    img.style.left="50%";
+    img.style.top="50%";
+    img.style.setProperty("--dx",(Math.random()-0.5)*1600+"px");
+    img.style.setProperty("--dy",(Math.random()-0.5)*1600+"px");
+    container.appendChild(img);
+    setTimeout(()=>img.remove(),4500);
+  }
+}
+
+window.addEventListener("DOMContentLoaded", () => {
+  if (Math.random() < 0.2) { // 1/10 chance
+    const fxContainer = document.getElementById("fx-container") || document.body;
+
+    // Create boombox element
+    const boombox = document.createElement("img");
+    boombox.src = "assets/boombox.png";
+    boombox.id = "euro-boombox";
+    boombox.style.position = "absolute";
+    boombox.style.bottom = "30px";
+    boombox.style.right = "40px";
+    boombox.style.width = "296px";
+    boombox.style.height = "auto";
+    boombox.style.imageRendering = "pixelated";
+    boombox.style.zIndex = "999";
+    fxContainer.appendChild(boombox);
+
+    // Pick one of your three tracks randomly
+    const tracks = ["assets/TickKissMe.mp3", "assets/LuckyTwiceLucky.mp3", "assets/VRIL.mp3"];
+    const euroMusic = new Audio(tracks[Math.floor(Math.random() * tracks.length)]);
+    euroMusic.loop = true;
+    euroMusic.volume = 0.5;
+
+    // Stop main shop music
+    const shopMusic = document.getElementById("shop-music");
+    if (shopMusic) {
+      shopMusic.pause();
+      shopMusic.src = "";
+      shopMusic.load();
+    }
+
+    // Respect mute state
+    const musicMuted = JSON.parse(localStorage.getItem("musicMuted") || "false");
+    euroMusic.muted = musicMuted;
+
+    // Play music safely
+    const playMusic = () => euroMusic.play().catch(() => {
+      document.addEventListener("click", () => euroMusic.play().catch(() => {}), { once: true });
+    });
+    playMusic();
+
+    // Bobbing animation
+    boombox.animate(
+      [
+        { transform: "translateY(0)" },
+        { transform: "translateY(-6px)" },
+        { transform: "translateY(0)" }
+      ],
+      { duration: 800, iterations: Infinity }
+    );
+
+    // Unlock boombox achievement
+    checkBoomboxShop();
+  }
+});
+
+
+// ======================= Restore purchased items on load =======================
+window.addEventListener("DOMContentLoaded", () => {
+  // Restore upgrades
+  Object.entries(ITEMS).forEach(([itemId, item]) => {
+    const button = document.querySelector(`.buy-item[data-id="${itemId}"]`) 
+                   || Array.from(document.querySelectorAll(".buy-item"))
+                           .find(b => b.textContent.startsWith(itemId));
+
+    if (!button) return;
+
+    // Upgrades
+    if (item.type === "upgrade" && item.key && localStorage.getItem(item.key) === "true") {
+      button.disabled = true;
+      button.textContent = `${itemId} - ✅ Activated`;
+      button.style.opacity = "0.5";
+      button.style.cursor = "not-allowed";
+    }
+
+    // Characters
+    if (item.type === "character") {
+      const unlocked = JSON.parse(localStorage.getItem("unlockedCharacters") || "[]");
+      if (unlocked.includes(itemId)) {
+        button.disabled = true;
+        button.textContent = `${itemId} - ✅ Unlocked`;
+        button.style.opacity = "0.5";
+        button.style.cursor = "not-allowed";
+      }
+    }
+
+    // Misc (like Hard Mode)
+    if (item.type === "misc" && localStorage.getItem("hardModeBought") === "true") {
+      button.disabled = true;
+      button.textContent = `${itemId} - ✅ Purchased`;
       button.style.opacity = "0.5";
       button.style.cursor = "not-allowed";
     }
   });
-}
-refreshShopItems();
-
-document.querySelectorAll(".buy-item").forEach(button => {
-  button.addEventListener("click", () => {
-    const cost = parseInt(button.dataset.cost);
-    const itemType = button.dataset.type; // may be undefined for normal items
-    const itemId = button.dataset.id ? button.dataset.id.trim() : button.textContent.split(' - ')[0].trim();
-
-    if (coins >= cost) {
-      coins -= cost;
-      localStorage.setItem("coins", coins);
-      coinDisplay.textContent = coins;
-
-      // ================= UPGRADES =================
-      if(itemId === "Tax Evasion") {
-        coinMultiplier = 2;
-        localStorage.setItem("coinMultiplier", coinMultiplier);
-        button.disabled = true;
-        button.textContent = `${itemId} - ✅ Activated`;
-        button.style.opacity = "0.5";
-        button.style.cursor = "not-allowed";
-      }
-
-      if(itemId === "Money Printing Machine") {
-        coinMultiplier = 5;
-        localStorage.setItem("coinMultiplier", coinMultiplier);
-        button.disabled = true;
-        button.textContent = `${itemId} - ✅ Activated`;
-        button.style.opacity = "0.5";
-        button.style.cursor = "not-allowed";
-
-        const taxButton = document.querySelector('.buy-item[data-id="Tax Evasion"]');
-        if(taxButton) {
-            taxButton.disabled = true;
-            taxButton.textContent = "Tax Evasion - ✅ Activated";
-            taxButton.style.opacity = "0.5";
-            taxButton.style.cursor = "not-allowed";
-        }
-      }
-      if(itemId === "Kill The Government") {
-  coinMultiplier = 10;
-  localStorage.setItem("coinMultiplier", coinMultiplier);
-  button.disabled = true;
-  button.textContent = `${itemId} - ✅ Activated`;
-  button.style.opacity = "0.5";
-  button.style.cursor = "not-allowed";
-
-  // also disable previous upgrades visually if needed
-  const prevButtons = [
-    '.buy-item[data-id="Tax Evasion"]',
-    '.buy-item[data-id="Money Printing Machine"]'
-  ];
-  prevButtons.forEach(sel => {
-    const b = document.querySelector(sel);
-    if(b){
-      b.disabled = true;
-      b.style.opacity = "0.5";
-      b.style.cursor = "not-allowed";
-    }
-  });
-}
-
-      // ================= CHARACTERS =================
-      if (itemType === "character") {
-        if (!unlockedCharacters.includes(itemId)) {
-          unlockedCharacters.push(itemId);
-          localStorage.setItem("unlockedCharacters", JSON.stringify(unlockedCharacters));
-
-          const purchaseSfx = document.getElementById("purchase-sfx");
-          if (purchaseSfx) {
-            purchaseSfx.currentTime = 0;
-            purchaseSfx.play().catch(() => {});
-          }
-
-          spawnMoneyFx();
-          refreshShopItems();
-
-          const zhiyLines = [
-            "I do not support human trafficking (HLEP IM BEING HELD HOSTAGE AND I HAVEMY FREEDOM OF SPEECH SEALED)",
-            "COME AGAIN RAHAHAH",
-            "OFFICER I SWEAR, HE JUST ENDED UP THERE"
-          ];
-          const rand = Math.floor(Math.random() * zhiyLines.length);
-          typeWriterEffect(zhiyLines[rand], zhiynlDialogue, 25);
-        }
-      } 
-      // ================= HARD MODE =================
-      else if (itemType === "misc" && itemId === "Hard Mode") {
-        localStorage.setItem("hardModeBought", "true"); // flag to check in selection.html
-        button.disabled = true;
-        button.textContent = `${itemId} - ✅ Purchased`;
-        button.style.opacity = "0.5";
-        button.style.cursor = "not-allowed";
-
-        const chachingSfx = new Audio("assets/chaching.mp3");
-        chachingSfx.play().catch(()=>{});
-        typeWriterEffect(`You bought ${itemId} (you did not have to do this)`, zhiynlDialogue, 25);
-        spawnMoneyFx();
-      } 
-      // ================= REGULAR ITEMS =================
-      else {
-        const chachingSfx = new Audio("assets/chaching.mp3");
-        chachingSfx.play().catch(()=>{});
-        typeWriterEffect(`Thanks for buy ${itemId} boy.`, zhiynlDialogue, 25);
-        spawnMoneyFx();
-      }
-    } 
-    else {
-          // Insufficient coins
-          const shopContainer = document.getElementById("shop-container");
-          shopContainer.classList.add("shake");
-          setTimeout(()=>shopContainer.classList.remove("shake"),400);
-
-          const insufficientSfx = document.getElementById("insufficient-sfx");
-          if(insufficientSfx){ insufficientSfx.currentTime=0; insufficientSfx.play().catch(err=>console.warn("Audio blocked:", err)); }
-
-          const roast = ["YOU", "ARE", "FUCKING", "BBBBBRRRRRRRRRRRRRRRRROOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE"];
-      let i = 0;
-
-      function nextRoastLine() {
-        if (i < roast.length) {
-          typeWriterEffect(roast[i], zhiynlDialogue, 25, () => {
-            i++;
-            setTimeout(nextRoastLine, 500);
-          });
-        } else {
-          // Stage 2: after BROKE, pick a random default insult
-          const defaultRoasts = [
-            "boohoo check yo wallet next time dog",
-            "HOP OFF SBG AND GO GET A JOB",
-            "BROKE BROKE BR",
-            "GET A LIFE NIGGA"
-          ];
-          const rand = Math.floor(Math.random() * defaultRoasts.length);
-          setTimeout(() => {
-            typeWriterEffect(defaultRoasts[rand], zhiynlDialogue, 25);
-          }, 1000); // wait 1s before fallback line
-        }
-      }
-
-      nextRoastLine();
-    }
-  });
 });
 
-    /* ======================= Money FX ======================= */
-    function spawnMoneyFx(){
-      const container = document.getElementById("fx-container");
-      for(let i=0;i<12;i++){
-        const img=document.createElement("img");
-        img.src="assets/money-wings.gif";
-        img.classList.add("money-fx");
-        img.style.left="50%";
-        img.style.top="50%";
-        const dx=(Math.random()-0.5)*1600+"px";
-        const dy=(Math.random()-0.5)*1600+"px";
-        img.style.setProperty("--dx",dx);
-        img.style.setProperty("--dy",dy);
-        container.appendChild(img);
-        setTimeout(()=>img.remove(),4500);
-      }
-    }
-
+// ======================= Achievement Check on Load =======================
+window.addEventListener("DOMContentLoaded", () => {
+  checkPreIndividualsAchievement();
+});
     /* ======================= Random Entry Dialogues ======================= */
 const randomEntryDialogues = {
   default: [
@@ -356,14 +483,31 @@ const randomEntryDialogues = {
 };
 
 // Show random entry dialogue based on current character
-window.addEventListener("DOMContentLoaded", ()=>{
-  const activeChar = sessionStorage.getItem("playerCharacter") || "default";
-  const lines = randomEntryDialogues[activeChar] || randomEntryDialogues.default;
-  const randomLine = lines[Math.floor(Math.random()*lines.length)];
-  zhiynlDialogue.textContent = randomLine;
+window.addEventListener("DOMContentLoaded", () => {
+  const zhiynlDialogue = document.getElementById('zhiynl-dialogue');
+  const convoBox = document.getElementById('conversation-box');
+  if (!zhiynlDialogue || !convoBox) return;
 
-  // Hide conversation box initially
+  let lines = [];
+  
+  // Priority: Tamper
+  if (sessionStorage.getItem("completedTamper") === "true") {
+    lines = [
+      "How'd the lead taste?",
+      "You look like you just got pumped by a shotgun",
+    ];
+  } else {
+    const activeChar = sessionStorage.getItem("playerCharacter") || "default";
+    lines = randomEntryDialogues[activeChar] || randomEntryDialogues.default;
+  }
+
+  zhiynlDialogue.textContent = lines[Math.floor(Math.random() * lines.length)];
   convoBox.style.display = 'none';
+
+  // Only remove flag **after displaying** to prevent overwriting
+  if (sessionStorage.getItem("completedTamper") === "true") {
+    sessionStorage.removeItem('completedTamper');
+  }
 });
  
   // defensive references (safe even if variables already exist)
@@ -452,3 +596,9 @@ if (tabButtons.length > 0) {
   const firstSection = document.getElementById("tab-" + firstTab.dataset.tab);
   if (firstSection) firstSection.classList.add("active");
 }
+const devCoinBtn = document.getElementById("dev-coin-btn");
+devCoinBtn.addEventListener("click", () => {
+    shopAPI.addCoins(500); // add 500 coins
+    playSound(clickSound); // optional feedback
+    alert("Added 500 coins (DEV)");
+});

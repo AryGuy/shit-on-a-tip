@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>JJJJJEEEEEEEEEWWWWWWWWWWWWWWWWWWWWW</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+  body {
+    background: #000 url('assets/pixel-tile.png') repeat;
+    image-rendering: pixelated;
+    color: white;
+    font-family: 'Press Start 2P', cursive;
+    padding: 40px;
+    margin: 0;
+    text-align: center;
+    cursor: default;
+    overflow: hidden;
+  }
+
+  #shop-container {
+    max-width: 950px;
+    margin: 40px auto;
+    padding: 60px 40px 40px;
+    background: #111;
+    border: 3px solid white;
+    position: relative;
+  }
+
+  #zhiynl-container {
+    position: relative;
+  }
+
+  #zhiynl-container img {
+    width: 250px;
+    image-rendering: pixelated;
+  }
+
+  #dialogue-box {
+    border: 2px solid white;
+    padding: 20px;
+    text-align: left;
+    font-size: 11px;
+    line-height: 1.6;
+    min-height: 100px;
+    margin-top: 60px;
+    background: #111;
+    white-space: pre-wrap;
+    text-shadow: -1px -1px 0 black, 1px -1px 0 black, -1px 1px 0 black, 1px 1px 0 black;
+  }
+
+  #muzzle-flash {
+    position: fixed;
+    width: 20px;
+    height: 20px;
+    background: white;
+    border-radius: 50%;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 999;
+  }
+
+  @keyframes flash-expand {
+    0% { opacity: 1; transform: scale(1); }
+    100% { opacity: 0; transform: scale(80); }
+  }
+
+  #black-overlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
+    background: black;
+    opacity: 0;
+    pointer-events: none;
+    z-index: 1000;
+  }
+
+  .achievement-popup {
+    position: fixed;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: white;
+    color: black;
+    padding: 20px;
+    font-size: 10px;
+    font-family: 'Press Start 2P', cursive;
+    border: 3px solid #ba732a;
+    box-shadow: 0 0 0 3px black;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+    z-index: 999999;
+    max-width: 300px;
+    word-wrap: break-word;
+    line-height: 1.2em;
+    text-align: center;
+    width: 600px;       /* make it longer horizontally */
+    max-width: 80%;     /* responsive on smaller screens */
+  }
+
+  .achievement-popup.show {
+    opacity: 1;
+  }
+</style>
+</head>
+<body>
+  <div id="shop-container">
+    <div id="zhiynl-container">
+      <img id="zhiynl-sprite" src="assets/zhiynlshotgun.png" alt="Zhiynl">
+    </div>
+    <div id="dialogue-box"></div>
+  </div>
+
+  <div id="muzzle-flash"></div>
+  <div id="black-overlay"></div>
+  <div id="achievement-popup" class="achievement-popup"></div>
+
+  <audio id="bg-music" src="assets/agartha.mp3" loop></audio>
+  <audio id="shot-sfx" src="assets/shotgunblast.mp3"></audio>
+  <audio id="achievement-sfx" src="achievement.mp3"></audio>
+
+  <script>
+    const bgMusic = document.getElementById('bg-music');
+    const flash = document.getElementById('muzzle-flash');
+    const overlay = document.getElementById('black-overlay');
+    const sprite = document.getElementById('zhiynl-sprite');
+    const shot = document.getElementById('shot-sfx');
+    const popup = document.getElementById('achievement-popup');
+    const achSfx = document.getElementById('achievement-sfx');
+    const dialogueBox = document.getElementById('dialogue-box');
+
+    const achievementList = {
+      tamperCutscene: { name: "21st Century Shoplifter", description: "JJJEEEEEEEEWWWWWWWWWWWWWWWWWWWWW" }
+    };
+
+    function unlockAchievement(id) {
+      if (!achievementList[id]) return;
+      const saved = JSON.parse(localStorage.getItem("achievements") || "{}");
+      const firstTime = !saved[id];
+      saved[id] = "true";
+      localStorage.setItem("achievements", JSON.stringify(saved));
+
+      popup.innerHTML = `<strong>🎉 ${achievementList[id].name}</strong><br>${achievementList[id].description}`;
+      if (!firstTime) popup.innerHTML += "<br><em>(This is not the first time you've done this shit)</em>";
+      popup.classList.add("show");
+      if (achSfx) { achSfx.currentTime = 0; achSfx.play().catch(() => {}); }
+      setTimeout(() => popup.classList.remove("show"), 4000);
+    }
+
+    bgMusic.play().catch(() => {
+      const clickToPlay = () => { bgMusic.play().catch(() => {}); document.body.removeEventListener('click', clickToPlay); };
+      document.body.addEventListener('click', clickToPlay);
+    });
+
+    /* ======================= Typewriter Effect ======================= */
+    let typeWriterInterval;
+    function typeWriterEffect(text, element, delay=25, callback) {
+      clearInterval(typeWriterInterval);
+      let i = 0;
+      element.textContent = '';
+      typeWriterInterval = setInterval(() => {
+        element.textContent += text[i] || '';
+        i++;
+        if(i >= text.length) {
+          clearInterval(typeWriterInterval);
+          if(callback) callback();
+        }
+      }, delay);
+    }
+
+    function playMonologue(lines, element, delayBetween=700) {
+      let index = 0;
+      function nextLine() {
+        if(index < lines.length) {
+          typeWriterEffect(lines[index], element, 25, () => {
+            setTimeout(() => {
+              index++;
+              nextLine();
+            }, delayBetween);
+          });
+        }
+      }
+      nextLine();
+    }
+
+    // Zhiynl monologue
+    const monologue = [
+      "SO I CAUGHT YO ASS TAMPERING AROUND THE CONSOLE LOG",
+      "WAS THIS CASH PROMISED TO YOU THREE THOUSAND YEARS AGO",
+      "YOU FUCKING JEW",
+      "ARE U PROUD OF YOURSELF NIGGA",
+      "GET THE FUCK OUT"
+    ];
+    playMonologue(monologue, dialogueBox);
+
+    function getMuzzlePosition() {
+      const rect = sprite.getBoundingClientRect();
+      return { x: rect.left + rect.width * 0.85, y: rect.top + rect.height * 0.45 };
+    }
+
+    function fireShotgun() {
+      const pos = getMuzzlePosition();
+      flash.style.left = `${pos.x}px`;
+      flash.style.top = `${pos.y}px`;
+      flash.style.opacity = '1';
+      flash.style.transform = 'scale(1)';
+      flash.style.animation = 'flash-expand 0.05s forwards';
+      if (shot) { shot.currentTime = 0; shot.play().catch(() => {}); }
+      setTimeout(() => overlay.style.opacity = '1', 50);
+    }
+
+    setTimeout(() => { fireShotgun(); }, 7500);
+    setTimeout(() => { unlockAchievement("tamperCutscene"); }, 12000);
+    setTimeout(() => {
+      sessionStorage.setItem('completedTamper', 'true');
+      window.location.href = 'index.html';
+    }, 14550);
+  </script>
+</body>
+</html>

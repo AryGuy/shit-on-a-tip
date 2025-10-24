@@ -124,6 +124,68 @@ document.addEventListener("DOMContentLoaded", () => {
         "VIVE LE ZHIY FRANÇAIS"
       ]
     },
+    
+    // ======== Sai's Dialogue =========
+    kj1: {
+      lines: [
+        "kj ur just",
+        "so h ot baby",
+        "KJ PLZ JSUT LET ME RAPE BRO"
+      ],
+      afterQuote: [
+        "I love u kj",
+        "imagine drinking pee"
+      ]
+    },
+
+    kj2: {
+      lines: [
+        "wow youre learnin from me",
+        "very fluent in zhiynl martial art",
+        "here is how u do it",
+        "ahem",
+        "SIT THE FUCK BACK DOWN YOU FUCKING WORTHLES STUPID ASS BITCH",
+        "YOU'LL STAY ON MY DICK UNTIL THE DAY YOU FUCKING DIE",
+        "YOU FUCKING COCK GOBBLING HOBGOBLIN MS MERRY BLOBFISH BITCH",
+        "GARBAGE COMPACTED CINDERBRICK LOOKIN TOOTSIPOT DUMBASS"
+      ],
+      afterQuote: [
+        "literally creamy landed",
+        "zeh skulliez"
+      ]
+    },
+      
+    kj3: {
+      lines: [
+        "Sigma Grindset KJ.",
+        "THROW THE GRENADE INTO SANS' HOUSE",
+        "RAAAAAAÀAHAHAHAHHAAHAHAA"
+      ],
+      afterQuote: [
+        "MINORITIES RAHAHAHAHAH CONFEDERAATES",
+        "you can stop your death by asking the skull king."
+      ]
+    },
+    
+      kj4: {
+      lines: [
+        "you",
+        "me",
+        "different ways of frying cock",
+        "number 1",
+        "we",
+        "...",
+        "we uy",
+        "uhhy",
+        "we uuhhhy",
+        "we fry it :]",
+        "We don't sell food here."
+      ],
+      afterQuote: [
+        "control your cocks",
+        "WHAT HAVE YOU DONE"
+      ]
+    },
   };
 
   // ======================= Character UI Setup =======================
@@ -150,6 +212,18 @@ document.addEventListener("DOMContentLoaded", () => {
       <button class="dialogue-option" data-dialogue="sai2">Fucking speak normally bro.</button>
       <button class="dialogue-option" data-dialogue="sai3">I got a question.</button>
       <button class="dialogue-option" data-dialogue="sai4">Is Magnesium an English word?</button>
+    `;
+    initDialogue(convoBox, zhiynlDialogue, dialogues);
+  }
+  
+  // ===== Kj =====
+  if (activeChar === "Kj") {
+    convoBox.innerHTML = `
+      <h3>CONVERSE</h3>
+      <button class="dialogue-option" data-dialogue="kj1">Why are you staring at me like that.</button>
+      <button class="dialogue-option" data-dialogue="kj2">FUCK YOU IN PARTICULAR</button>
+      <button class="dialogue-option" data-dialogue="kj3">I almost killed Andy using a grenade.</button>
+      <button class="dialogue-option" data-dialogue="kj4">I am starving.</button>
     `;
     initDialogue(convoBox, zhiynlDialogue, dialogues);
   }

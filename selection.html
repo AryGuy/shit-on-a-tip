@@ -8,64 +8,64 @@
   <style>
     /* === HUD for Selected Player === */
     #individuals-display {
-  position: fixed;
-  top: 80px;
-  left: 40px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  background: rgba(255, 255, 255, 0.1);
-  border: 3px solid white;
-  padding: 10px;
-  border-radius: 6px;
-  box-shadow: 0 0 0 3px black;
-  z-index: 1000;
-  width: 130px;
-  text-align: center;
-}
+      position: fixed;
+      top: 80px;
+      left: 40px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.1);
+      border: 3px solid white;
+      padding: 10px;
+      border-radius: 6px;
+      box-shadow: 0 0 0 3px black;
+      z-index: 1000;
+      width: 130px;
+      text-align: center;
+    }
 
-#individual-label {
-  font-size: 0.45em;
-  color: #ccc;
-  margin-bottom: 6px;
-  text-shadow: 2px 2px 0 #000;
-}
+    #individual-label {
+      font-size: 0.45em;
+      color: #ccc;
+      margin-bottom: 6px;
+      text-shadow: 2px 2px 0 #000;
+    }
 
-#individual-icon {
-  width: 64px;
-  height: 64px;
-  image-rendering: pixelated;
-  background: #000;
-  border: 2px solid white;
-  box-shadow: 0 0 0 2px black;
-  margin-bottom: 6px;
-}
+    #individual-icon {
+      width: 64px;
+      height: 64px;
+      image-rendering: pixelated;
+      background: #000;
+      border: 2px solid white;
+      box-shadow: 0 0 0 2px black;
+      margin-bottom: 6px;
+    }
 
-#individual-name {
-  font-size: 0.5em;
-  color: #fff;
-  text-shadow: 2px 2px 0 #000;
-  word-wrap: break-word;
-}
+    #individual-name {
+      font-size: 0.5em;
+      color: #fff;
+      text-shadow: 2px 2px 0 #000;
+      word-wrap: break-word;
+    }
   </style>
 </head>
 <body>
   <!-- === HUD (shows selected player) === -->
-<div id="individuals-display">
-  <div id="individual-label">Currently playing as:</div>
-  <img id="individual-icon" src="" alt="Icon">
-  <div id="individual-name">None</div>
-</div>
+  <div id="individuals-display">
+    <div id="individual-label">Currently playing as:</div>
+    <img id="individual-icon" src="" alt="Icon">
+    <div id="individual-name">None</div>
+  </div>
 
   <h1>Choose Your 3 Fine Shyt</h1>
   <div id="coin-display">🪙 Coins: <span id="coin-count">0</span></div>
-  <div id="hardmode-toggle-container" style="margin-top: 10px;">
-  <label>
-    <input type="checkbox" id="hardmode-toggle">
-    Hard Mode
-  </label>
-</div>
 
+  <div id="hardmode-toggle-container" style="margin-top: 10px;">
+    <label>
+      <input type="checkbox" id="hardmode-toggle">
+      Hard Mode
+    </label>
+  </div>
 
   <div id="carousel-container">
     <button id="left-arrow" class="action-btn">&lt;</button>
@@ -94,6 +94,9 @@
   <audio id="click-sfx" src="assets/buttonclick.mp3" preload="auto"></audio>
   <audio id="selection-music" src="assets/selectionmusic.mp3" loop></audio>
   <audio id="select-click-sfx" src="assets/selectclick.mp3" preload="auto"></audio>
+
+  <!-- === Shared coin system === -->
+  <script src="coinCore.js"></script>
 
   <script>
     // === MUSIC HANDLER ===
@@ -175,25 +178,16 @@
       e.preventDefault();
       const clickSfx = document.getElementById('click-sfx');
       const chosen = JSON.stringify(selected);
-
-      // Keep playerCharacter consistent with selection system
-      const playerChar = sessionStorage.getItem("playerCharacter");
-      if (playerChar) console.log(`Active Player: ${playerChar}`);
-
       clickSfx.currentTime = 0;
-      clickSfx.play().catch(() => {
-        sessionStorage.setItem("chosenTargets", chosen);
-        window.location.href = "game.html";
-      });
-
-      setTimeout(() => {
-        sessionStorage.setItem("chosenTargets", chosen);
-        window.location.href = "game.html";
-      }, 200);
+      clickSfx.play().catch(() => {});
+      sessionStorage.setItem("chosenTargets", chosen);
+      setTimeout(() => window.location.href = "game.html", 200);
     });
 
     document.getElementById("high-score").textContent = localStorage.getItem("highScore") || 0;
-    document.getElementById("coin-count").textContent = localStorage.getItem("coins") || 0;
+
+    // === Sync coin count from coinCore.js ===
+    if (window.shopAPI) shopAPI.addCoins(0); // triggers display refresh
 
     updateDisplay();
   </script>
@@ -226,36 +220,32 @@
     }
 
     // === PLAYER CHARACTER HUD ===
-const displayIcon = document.getElementById("individual-icon");
-const displayName = document.getElementById("individual-name");
-const storedChar = sessionStorage.getItem("playerCharacter");
+    const displayIcon = document.getElementById("individual-icon");
+    const displayName = document.getElementById("individual-name");
+    const storedChar = sessionStorage.getItem("playerCharacter");
 
-if (storedChar) {
-  displayIcon.src = `./assets/chars/${storedChar}.png`;
-  displayName.textContent = storedChar;
-} else {
-  displayIcon.src = "";
-  displayName.textContent = "None";
-}
-  // Show Hard Mode toggle only if Hard Mode was purchased
-const hardmodeContainer = document.getElementById("hardmode-toggle-container");
-const hardmodeBought = localStorage.getItem("hardModeBought") === "true";
+    if (storedChar) {
+      displayIcon.src = `./assets/chars/${storedChar}.png`;
+      displayName.textContent = storedChar;
+    } else {
+      displayIcon.src = "";
+      displayName.textContent = "None";
+    }
 
-if (!hardmodeBought) {
-  hardmodeContainer.style.display = "none";
-} else {
-  hardmodeContainer.style.display = "block";
+    // === HARD MODE VISIBILITY ===
+    const hardmodeContainer = document.getElementById("hardmode-toggle-container");
+    const hardmodeBought = localStorage.getItem("hardModeBought") === "true";
 
-  // ===== Track Hard Mode state for game.html =====
-  const hardmodeToggle = document.getElementById("hardmode-toggle");
-  // Initialize checkbox from previous session
-  hardmodeToggle.checked = sessionStorage.getItem("hardModeActive") === "true";
-
-  // Update sessionStorage when toggled
-  hardmodeToggle.addEventListener("change", () => {
-    sessionStorage.setItem("hardModeActive", hardmodeToggle.checked ? "true" : "false");
-  });
-}
+    if (!hardmodeBought) {
+      hardmodeContainer.style.display = "none";
+    } else {
+      hardmodeContainer.style.display = "block";
+      const hardmodeToggle = document.getElementById("hardmode-toggle");
+      hardmodeToggle.checked = sessionStorage.getItem("hardModeActive") === "true";
+      hardmodeToggle.addEventListener("change", () => {
+        sessionStorage.setItem("hardModeActive", hardmodeToggle.checked ? "true" : "false");
+      });
+    }
   </script>
 </body>
 </html>
