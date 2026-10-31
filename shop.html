@@ -1,6 +1,18 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <script>
+    // Zhiynl does not shop. He goes to the empty shop.
+    if (sessionStorage.getItem("playerCharacter") === "Zhiynl") location.replace("emptyshop.html");
+  </script>
+  <script>
+  try {
+    const a = JSON.parse(localStorage.getItem("achievements") || "{}");
+    if (a.preIndividuals && localStorage.getItem("priceNoticeSeen") !== "true") {
+      location.replace("pricenotice.html");
+    }
+  } catch (e) {}
+</script>
   <meta charset="UTF-8">
   <title>It Yo Boy Zhiy Shop</title>
   <link rel="stylesheet" href="shop.css">
@@ -8,11 +20,8 @@
 </head>
 <body>
   <div id="shop-container">
-    <!-- Achievement popup container -->
   <div id="achievement-popup" class="achievement-popup"></div>
-    
-    <!-- ===== Coin Display ===== -->
-    <div id="coin-display">🪙 COINS: <span id="coin-count">0</span></div>
+  <div id="coin-display">🪙 COINS: <span id="coin-count">0</span></div>
 
     <!-- ===== Zhiynl Sprite ===== -->
     <div id="zhiynl-container">
@@ -44,6 +53,11 @@
   </button>
   <button class="dialogue-option" data-replies='["Everyone there is fucking insane.","IF I DO IT","I GET AN ARMY OF GOONS","WHO WILL LICK MY COCK IF I ASKED THEM"]'>
     I heard you wanted to overthrow the Japanese Government. Why?
+  </button>
+
+  <!-- Secret option: needs Golden Ticket + Pre-Individuals + playing as Kai (see updateSecretOption in shop.js) -->
+  <button id="zhiynl-secret" class="dialogue-option" style="display:none;" data-goto="dogkilling.html" data-replies='["A DOGTASTROPHE U SAY","AIT LET ME GRAB MY BOOMSTICK","WATCH ME FUCKIN REMAKE THE ENTIRE HOLOCAUST"]'>
+    my man my backyard is full of dogs they tryna have brutal sex with my mom and my dad and its making my tits shake heavily
   </button>
 
   <!-- Optional hidden button for character-specific actions -->
@@ -84,7 +98,7 @@
           <li><button class="buy-item" data-cost="1" data-id="Packaged Air" data-description="Is this a scam?">Packaged Air - 1 coin</button></li>
           <li><button class="buy-item" data-cost="100" data-id="Tax Evasion" data-description="2x Coin Gain">Tax Evasion (2x Coin Gain) - 100 coins</button></li>
           <li><button class="buy-item" data-cost="200" data-id="Money Printing Machine" data-description="5x Coin Gain (Does not stack)">Money Printing Machine (5x Coin Gain) - 200 coins</button></li>
-          <li><button class="buy-item" data-id="Kill The Government" data-cost="1000" data-description="10x Cash Gain (Still does not stack)">Kill The Government - 1000 coins</button>
+          <li><button class="buy-item" data-id="Kill The Government" data-cost="1000" data-description="10x Cash Gain (Still does not stack)">Kill The Government - 1000 coins</button></li>
         </ul>
       </div>
 
@@ -94,6 +108,11 @@
           <li><button class="buy-item" data-cost="500" data-type="character" data-id="Andy" data-description='"We in Japan, why the hell we going for Chinese?"'>Andy - 500 coins</button></li>
           <li><button class="buy-item" data-cost="500" data-type="character" data-id="Sai" data-description='"Watch me destroy a 5700$ gold bar with nitric acid."'>Sai - 500 coins</button></li>
           <li><button class="buy-item" data-cost="500" data-type="character" data-id="Kj" data-description='"YOU FUCKING MMMMMOOOOONNNNNNNKKKKKKKEEEEYYYYYY"'>Kj - 500 coins</button></li>
+          <li><button class="buy-item" data-cost="500" data-type="character" data-id="Win" data-description='Go to sleeeeep'>Win - 500 coins</button></li>
+          <li><button class="buy-item" data-cost="500" data-type="character" data-id="Dennis" data-description='"Yo rq bro I need u to get a gender reassignment plz man its urgent"'>Dennis - 500 coins</button></li>
+          <li><button class="buy-item" data-cost="500" data-type="character" data-id="Kai" data-description='Heavy like a Brinks truck'>Kai Furukawa - 500 coins</button></li>
+
+
         </ul>
       </div>
 
@@ -101,17 +120,25 @@
         <h3>Misc:</h3>
         <ul>
           <li><button class="buy-item" data-cost="200" data-type="misc" data-id="Hard Mode" data-description="Self explanatory">Hard Mode - 200 Coins</button></li>
+          <li><button class="buy-item" data-cost="2500" data-type="misc" data-id="Golden Ticket" data-description="Admit one. Ask me nicely.">Golden Ticket - 2500 coins</button></li>
         </ul>
       </div>
     </div>
 
-
-    <!-- ===== Item Preview (INSIDE BORDER) ===== -->
     <div id="item-preview" class="hidden"></div>
   </div>
   </div>
   <script src="coinCore.js"></script>
   <script src="shop.js"></script>
   <script src="conversation.js"></script>
+  <script>
+if (new URLSearchParams(location.search).has("dev")) {
+  const b = document.createElement("button");
+  b.textContent = "+1000 COINS";
+  b.style.cssText = "position:fixed;bottom:10px;left:10px;z-index:99999;font-family:'Press Start 2P',cursive;font-size:9px;padding:8px;background:#0a0;color:#fff;border:2px solid #fff;cursor:pointer;";
+  b.onclick = () => window.devGiveCoins(1000);
+  document.body.appendChild(b);
+}
+</script>
 </body>
 </html>

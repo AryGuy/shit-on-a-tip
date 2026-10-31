@@ -9,8 +9,8 @@
 </head>
 
 <body>
-  <!-- ─────────────── Title & Info ─────────────── -->
   <h1>Shit on Your Tip or Tip on Your Shit</h1>
+  <div id="fade-in-overlay"></div>
   <div id="timer-display" style="
     position: fixed;
     top: 10px;
@@ -30,8 +30,6 @@
   </div>
 
   <div id="score">Score: 0</div>
-
-  <!-- ─────────────── Game UI ─────────────── -->
   <div class="game-container">
     <div class="profile" id="left-slot">❓</div>
     <div class="profile" id="right-slot">❓</div>
@@ -62,16 +60,18 @@
 
   <!-- ─────────────── Audio Assets ─────────────── -->
   <audio id="clap-sound" src="assets/clap.mp3" preload="auto"></audio>
-  <audio id="alert-sound" src="alert.mp3" preload="auto"></audio>
+  <audio id="alert-sound" src="assets/soundfx/alert.mp3" preload="auto"></audio>
   <audio id="achievement-sound" src="achievement.mp3" preload="auto"></audio>
   <audio id="button-click" src="assets/ingameclick.mp3" preload="auto"></audio>
   <audio id="reveal-click" src="assets/clickreveal.mp3" preload="auto"></audio>
   <audio id="fnaf-ambience" src="assets/fnaf_ambience.mp3" preload="auto"></audio>
   <audio id="glance-sfx" src="assets/glanceload.mp3" preload="auto"></audio>
   <audio id="gofast-sfx" src="assets/gofast.mp3" preload="auto"></audio>
+  <audio id="streak-crunch-sound" src="assets/soundfx/streakcrunch.mp3" preload="auto"></audio>
 
-  <!-- ─────────────── Achievement Popup ─────────────── -->
+  <!-- ─────────────── Popup ─────────────── -->
   <div id="achievement-popup" class="achievement-popup"></div>
+  <div id="streak-popup"></div>
 
   <!-- ─────────────── Scripts ─────────────── -->
   <script src="coinCore.js"></script>

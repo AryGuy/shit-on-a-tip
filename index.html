@@ -155,8 +155,8 @@
   <button data-href="shop.html" class="nav-btn">SHOP</button>
   <button data-href="PlayableChar.html" class="nav-btn">CHARACTERS</button>
 
-  <p id="footer-text">I just shoved a nuke up my urethra™</p>
-
+<p id="footer-text"></p>
+  
   <button id="reset-btn">RESET DATA</button>
 
   <div id="reset-modal">
@@ -169,6 +169,8 @@
 
   <audio id="hover-sfx" src="assets/buttonhover.mp3" preload="auto"></audio>
   <audio id="click-sfx" src="assets/buttonclick.mp3" preload="auto"></audio>
+
+  <script src="coinCore.js"></script>
 
   <script>
     const hoverSfx = document.getElementById('hover-sfx');
@@ -223,10 +225,22 @@ cancelReset.addEventListener('click', () => {
 });
 
 
-    const currentChar = sessionStorage.getItem("playerCharacter");
-    if (currentChar) {
-      console.log(`Hello, you're using ${currentChar}`);
-    }
+const footerTexts = [
+  "I just shoved a nuke up my urethra™",
+  "YOU SHUT YOUR MOUTH",
+  "Put on the cow suit bro",
+  "EPSTEIN FUCK NIGGERS",
+  "Bottom Text",
+  "I'm so hungry I could rape a horse",
+  "I got shit on my tip ayy",
+  "IF YOU WANT MY BOOTY CHEEKS SO BAD THEN HOP ON MY OF",
+  "Edd's mother is a delicacy",
+  "Never stop speakin ill of them dogs"
+];
+
+const footer = document.getElementById("footer-text");
+footer.textContent =
+  footerTexts[Math.floor(Math.random() * footerTexts.length)];
   </script>
 </body>
 </html>

@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Achievements - Shit on Your Tip</title>
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
   <style>
@@ -12,7 +13,7 @@
       color: #fff;
       font-family: 'Press Start 2P', cursive;
       text-align: center;
-      padding-top: 40px;
+      padding: 40px 0 20px;
       margin: 0;
       background-image: repeating-linear-gradient(
         45deg,
@@ -28,7 +29,7 @@
     h1 {
       font-size: 1.2em;
       line-height: 2.2em;
-      margin-bottom: 20px;
+      margin: 0 0 40px;
       text-shadow:
         -2px -2px 0 #000,
          2px -2px 0 #000,
@@ -42,58 +43,176 @@
       letter-spacing: 4px;
     }
 
+    /* ===== book: tabs on the left, one big panel on the right ===== */
+    .book {
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      width: min(820px, calc(100% - 24px));
+      margin: 0 auto;
+    }
+
+    .tabs {
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      align-items: flex-end;    /* every tab's right edge meets the panel */
+      width: 128px;             /* fixed, so the layout doesn't shift between tabs */
+      margin: 36px -4px 0 0;    /* overlap the panel's left border */
+      flex-shrink: 0;
+      position: relative;
+    }
+
     .tab-btn {
+      position: relative;
+      z-index: 1;               /* inactive tabs sit behind the panel */
+      width: 104px;
       font-family: 'Press Start 2P', cursive;
-      padding: 15px 30px;
-      margin: 0 5px;
-      font-size: 0.65em;
-      background-color: #222;
-      border: 2px solid #333;
-      color: #fff;
-      cursor: pointer;
-      transition: background 0.3s ease;
-    }
-
-    .tab-btn.active, .tab-btn:hover {
-      background-color: #ba732a;
-      color: black;
-      border-color: white;
-    }
-
-    .tab-section { margin-top: 20px; }
-
-    .achievement {
-      background-color: #222;
-      padding: 20px;
-      margin: 20px auto;
-      max-width: 500px;
-      border: 2px solid #333;
-      color: white;
+      font-size: 0.6em;
       text-align: left;
-      box-shadow: 0 0 0 3px black;
+      padding: 18px 12px;
+      background-color: #111;
+      color: #aaa;
+      border: 3px solid #555;
+      border-right: none;
+      cursor: pointer;
+      transform: translateX(10px);  /* tucked in */
+      transition: transform 0.15s ease, width 0.15s ease, background 0.15s ease, color 0.15s ease;
     }
+
+    .tab-btn:hover { color: #fff; border-color: #ba732a; }
+
+    /* selected tab pulls out of the panel and merges with it */
+    .tab-btn.active {
+      z-index: 3;               /* above the panel's border */
+      width: 128px;
+      transform: translateX(0);
+      background-color: #1e1e1e;
+      color: #ffbe4d;
+      border-color: #fff;
+    }
+
+    .panel {
+      flex: 1;
+      min-width: 0;
+      position: relative;
+      z-index: 2;
+      min-height: 320px;
+      background-color: #1e1e1e;
+      border: 4px solid #fff;
+      text-align: left;
+    }
+
+    /* ===== rows ===== */
+    .achievement {
+      position: relative;
+      display: flex;
+      align-items: center;
+      gap: 18px;
+      padding: 18px 18px 18px 40px;
+      border-bottom: 3px solid #444;
+      color: #fff;
+      overflow: hidden;
+    }
+    .list .achievement:last-child { border-bottom: none; }
 
     .achievement.unlocked {
       background-color: #ba732a;
-      border-color: white;
-      color: black;
-      box-shadow: 0 0 0 3px black, 0 0 10px #ffbe4d;
+      color: #000;
+      border-bottom-color: #000;
     }
+
+    /* tier strip on the left edge: bronze / silver / gold */
+    .achievement .strip {
+      position: absolute; top: 0; left: 0; bottom: 0; width: 16px;
+      border-right: 3px solid #000;
+    }
+    .achievement.easy   .strip { background: linear-gradient(90deg, #4a2a10, #99622c 50%, #4a2a10); }
+    .achievement.medium .strip { background: linear-gradient(90deg, #8d939b, #e4e8ee 50%, #8d939b); }
+    .achievement.hard   .strip { background: linear-gradient(90deg, #a87400, #ffe066 50%, #a87400); }
+    .achievement.secret .strip { background: linear-gradient(90deg, #5c0010, #e0115f 50%, #5c0010); }
 
     @keyframes unlockPulse {
-      0%   { box-shadow: 0 0 0 3px black, 0 0 0px #ffbe4d; }
-      50%  { box-shadow: 0 0 0 3px black, 0 0 25px #ffbe4d; }
-      100% { box-shadow: 0 0 0 3px black, 0 0 0px #ffbe4d; }
+      0%   { box-shadow: inset 0 0 0 #ffbe4d; }
+      50%  { box-shadow: inset 0 0 30px #ffe27a; }
+      100% { box-shadow: inset 0 0 0 #ffbe4d; }
+    }
+    .achievement.unlocked.newly-unlocked { animation: unlockPulse 1s ease-out 1; }
+
+    .achievement .trophy {
+      width: 48px; height: 56px; flex-shrink: 0; object-fit: contain;
+      image-rendering: auto;
+    }
+    .achievement:not(.unlocked) .trophy { filter: grayscale(100%) brightness(0.7); opacity: 0.4; }
+    .achievement.unlocked .trophy { filter: drop-shadow(2px 2px 0 rgba(0,0,0,0.6)); }
+    .achievement:not(.unlocked) .info { opacity: 0.8; }
+
+    .achievement .info { flex: 1; min-width: 0; }
+    .achievement .name { font-size: 0.7em; margin-bottom: 10px; color: inherit; line-height: 1.5em; }
+    .achievement .desc { font-size: 0.5em; color: inherit; line-height: 1.6em; }
+
+    .achievement .reward-row {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 12px;
+    }
+    .achievement .coins {
+      font-size: 0.5em;
+      color: #fff;
+      background-color: #000;
+      padding: 5px 7px;
     }
 
-    .achievement.unlocked.newly-unlocked {
-      animation: unlockPulse 1s ease-out 2;
+    .achievement .claim-btn {
+      font-family: 'Press Start 2P', cursive;
+      font-size: 0.5em;
+      padding: 6px 10px;
+      background-color: #fff;
+      color: #000;
+      border: 2px solid #000;
+      box-shadow: 0 0 0 2px #ffbe4d;
+      cursor: pointer;
     }
+    .achievement .claim-btn:hover:not(:disabled) { background-color: #ffbe4d; }
+    .achievement .claim-btn:disabled { opacity: 0.5; cursor: default; }
 
-    .achievement .name { font-size: 0.7em; margin-bottom: 10px; color: inherit; }
-    .achievement .desc { font-size: 0.5em; color: inherit; margin-bottom: 5px; }
-    .achievement b { font-size: 0.6em; color: white; background-color: #000; padding: 1px 3px; }
+    .achievement .claimed-tag { font-size: 0.45em; color: inherit; opacity: 0.7; }
 
+    /* ===== unlock shine ===== */
+    @keyframes shineSweep {
+      0%   { transform: translateX(-120%) skewX(-20deg); }
+      100% { transform: translateX(320%) skewX(-20deg); }
+    }
+    @keyframes trophyBling {
+      0%, 100% { transform: scale(1) rotate(0deg); filter: drop-shadow(2px 2px 0 rgba(0,0,0,0.6)) brightness(1); }
+      25%      { transform: scale(1.2) rotate(-8deg); filter: drop-shadow(0 0 10px #fff) brightness(1.5); }
+      50%      { transform: scale(1.1) rotate(6deg);  filter: drop-shadow(0 0 14px #ffe27a) brightness(1.4); }
+      75%      { transform: scale(1.2) rotate(-4deg); filter: drop-shadow(0 0 10px #fff) brightness(1.5); }
+    }
+    @keyframes sparkle {
+      0%, 100% { opacity: 0; transform: scale(0) rotate(0deg); }
+      50%      { opacity: 1; transform: scale(1) rotate(90deg); }
+    }
+    .achievement.newly-unlocked::before {
+      content: "";
+      position: absolute; top: 0; left: 0; width: 25%; height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.7), transparent);
+      animation: shineSweep 1s ease-out 1;
+      pointer-events: none;
+    }
+    .achievement.newly-unlocked .trophy { animation: trophyBling 1s ease-in-out 1; }
+    .achievement .spark {
+      position: absolute; font-size: 14px; color: #fff; opacity: 0; pointer-events: none;
+      text-shadow: 0 0 6px #ffe27a, 0 0 12px #ffbe4d;
+    }
+    .achievement.newly-unlocked .spark { animation: sparkle 0.7s ease-in-out 1; }
+    .achievement .spark.s1 { left: 34px; top: 8px; animation-delay: 0s; }
+    .achievement .spark.s2 { left: 72px; top: 30px; animation-delay: 0.15s; }
+    .achievement .spark.s3 { left: 50px; bottom: 6px; animation-delay: 0.3s; }
+
+    /* ===== back button ===== */
     button.nav-btn {
       font-family: 'Press Start 2P', cursive;
       padding: 20px 40px;
@@ -106,53 +225,66 @@
       transition: transform 0.1s ease, background 0.3s ease;
       display: block;
       margin: 40px auto;
-      width: 320px;
+      width: min(560px, calc(100% - 24px));
       box-shadow: 0 0 0 3px black;
     }
+    button.nav-btn:hover { background-color: #ffbe4d; transform: scale(1.02); }
 
-    button.nav-btn:hover { background-color: #ffbe4d; transform: scale(1.04); }
+    #coin-toast {
+      position: fixed; top: 20px; right: 20px; z-index: 5000;
+      background: #fff; color: #000; border: 3px solid #000; box-shadow: 0 0 0 3px #ffbe4d;
+      font-size: 0.6em; padding: 12px 14px;
+      opacity: 0; transform: translateY(-10px); pointer-events: none;
+      transition: opacity 0.3s ease, transform 0.3s ease;
+    }
+    #coin-toast.show { opacity: 1; transform: translateY(0); }
 
-    #footer-text { margin-top: 60px; font-size: 8px; color: #888; }
+    /* ===== narrow screens: tabs go on top, selected one pops up ===== */
+    @media (max-width: 640px) {
+      .book { flex-direction: column; align-items: stretch; }
+      .tabs { flex-direction: row; gap: 6px; margin: 0 0 -4px 10px; align-items: flex-end; width: auto; }
+      .tab-btn {
+        width: auto; flex: 1; text-align: center; padding: 14px 6px; font-size: 0.5em;
+        border: 3px solid #555; border-bottom: none; transform: translateY(8px);
+      }
+      .tab-btn.active { width: auto; padding-top: 20px; transform: translateY(0); border-color: #fff; }
+      .achievement { padding-left: 34px; gap: 12px; }
+      .achievement .trophy { width: 36px; height: 42px; }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .achievement.newly-unlocked,
+      .achievement.newly-unlocked .trophy,
+      .achievement.newly-unlocked .spark,
+      .achievement.newly-unlocked::before { animation: none; }
+      .tab-btn { transition: none; }
+    }
   </style>
 </head>
 <body>
-  <h1>🏆 ACHIEVEMENTS</h1>
+  <h1>ACHIEVEMENTS</h1>
 
-  <!-- Tabs -->
-  <div style="margin-bottom:20px;">
-    <button class="tab-btn active" data-target="general">General</button>
-    <button class="tab-btn" data-target="clap">Claps</button>
-  </div>
-
-  <!-- Achievements Sections -->
-  <div id="achievements-container">
-    <div id="general" class="tab-section">
-      <h2>General</h2>
-      <div class="achievement" data-key="clappedSansZero"></div>
-      <div class="achievement" data-key="clappedLucyZero"></div>
-      <div class="achievement" data-key="preIndividuals"></div>
-      <div class="achievement" data-key="boomboxEasterEgg"></div>
-      <div class="achievement" data-key="againstallodds"></div>
-      <div class="achievement" data-key="tamperCutscene"></div>
+  <div class="book">
+    <div class="tabs">
+      <button class="tab-btn active" data-target="general">General</button>
+      <button class="tab-btn" data-target="ingame">In-game</button>
+      <button class="tab-btn" data-target="clap">Claps</button>
     </div>
 
-    <div id="clap" class="tab-section" style="display:none;">
-      <h2>Claps</h2>
-      <div class="achievement" data-key="clappedDennis"></div>
-      <div class="achievement" data-key="clappedAndy"></div>
-      <div class="achievement" data-key="clappedKai"></div>
-      <div class="achievement" data-key="clappedSai"></div>
-      <div class="achievement" data-key="clappedMatt"></div>
-      <div class="achievement" data-key="clappedZewonie"></div>
-      <div class="achievement" data-key="clappedIqnore"></div>
-      <div class="achievement" data-key="clappedZhiynl"></div>
-      <div class="achievement" data-key="clappedAry"></div>
-      <div class="achievement" data-key="clappedEdd"></div>
-      <div class="achievement" data-key="clappedWin"></div>
-      <div class="achievement" data-key="clappedHieu"></div>
-      <div class="achievement" data-key="clappedMido"></div>
+    <div class="panel" id="achievements-container">
+      <div id="general" class="tab-section">
+        <div class="list" data-list="general"></div>
+      </div>
+      <div id="ingame" class="tab-section" style="display:none;">
+        <div class="list" data-list="ingame"></div>
+      </div>
+      <div id="clap" class="tab-section" style="display:none;">
+        <div class="list" data-list="clap"></div>
+      </div>
     </div>
   </div>
+
+  <div id="coin-toast"></div>
 
   <button data-href="index.html" class="nav-btn">← BACK TO MAIN MENU</button>
 
@@ -160,40 +292,123 @@
   <audio id="hover-sfx" src="assets/buttonhover.mp3" preload="auto"></audio>
   <audio id="click-sfx" src="assets/buttonclick.mp3" preload="auto"></audio>
 
-  <p id="footer-text">type shit im sayin</p>
+  <script src="coinCore.js"></script>
 
   <script>
+    // coin reward per difficulty tier (easy = bronze strip, medium = silver, hard = gold, secret = ruby)
+    const REWARDS = { easy: 100, medium: 500, hard: 1000, secret: 5000 };
+
+    // coinCore only hands out the grant while the page is loading, so grab it now
+    // and keep it around for the CLAIM buttons.
+    const coinGrant = (window.shopAPI && shopAPI.claimGrant) ? shopAPI.claimGrant() : null;
+
+    // tab: general | ingame | clap     diff: easy | medium | hard | secret
+    // Order here is the order shown on the page.
     const defaultAchievements = {
-      clappedDennis: { name: "I'M HYPERFOLDING IT", description: "Clap Dennis 10 times in one game" },
-      clappedAndy: { name: "Put On The Cowsuit Bro", description: "Clap Andy 10 times in one game" },
-      clappedKai: { name: "Big Black Japanese Man", description: "Clap Kai 10 times in one game" },
-      clappedSai: { name: "Amogus Sex Plushie", description: "Clap Sai 10 times in one game" },
-      clappedMatt: { name: "Femboy Feet", description: "Clap Matt 10 times in one game" },
-      clappedZewonie: { name: "Quite Possibly My Biggest 'Hear Me Out'", description: "Clap Kj 10 times in one game" },
-      clappedIqnore: { name: "I'm Saving This Shit To My Gallery", description: "Clap Iqnore 10 times in one game" },
-      clappedZhiynl: { name: "DRINK THE PEE NOW NOWWWWW", description: "Clap Zhiynl 10 times in one game" },
-      clappedAry: { name: "FEMALE COUNTERPART SUPREMACY", description: "Clap Ary 10 times in one game" },
-      clappedEdd: { name: "His Mother Is Still Better", description: "Clap Edd 10 times in one game" },
-      clappedWin: { name: "First One To Fall Asleep In The Sleepover", description: "Clap Win 10 times in one game" },
-      clappedHieu: { name: "Only Ethical Gooning 😡", description: "Clap Hieu 10 times in one game" },
-      clappedMido: { name: "Necrophiliac", description: "Clap Mido 10 times in one game" },
-      clappedSansZero: { name: "Pre Nut Clarity", description: "Game Over to Sans at 0 score" },
-      clappedLucyZero: { name: "You Alright Bro?", description: "Game Over to Lucy at 0 score" },
-      tamperCutscene: { name: "21st Century Shoplifter", description: "You've crossed the line" },
-      preIndividuals: { name: "Pre-Individuals", description: "Own 3 characters" },
-      againstallodds: {name: "Against All Odds", description: "Die from a heart attack"},
-      boomboxEasterEgg: {name: "#SAVEEUROPE", description: "If our love is tragedy, why are you my remedy?"}
+      // GENERAL
+      preIndividuals:   { tab: "general", diff: "easy", name: "Pre-Individuals", description: "Own 3 characters" },
+      boomboxEasterEgg: { tab: "general", diff: "easy", name: "#SAVEEUROPE", description: "If our love is tragedy, why are you my remedy?" },
+      tamperCutscene:   { tab: "general", diff: "hard", name: "21st Century Shoplifter", description: "You've crossed the line" },
+      kissMyBoot:       { tab: "general", diff: "secret", name: "Kiss My Boot", description: "Cleared the backyard." },
+
+      // IN-GAME
+      clappedSansZero:  { tab: "ingame", diff: "easy", name: "Pre Nut Clarity", description: "Game Over to Sans at 0 score" },
+      clappedLucyZero:  { tab: "ingame", diff: "easy", name: "You Alright Bro?", description: "Game Over to Lucy at 0 score" },
+      tunnelVision:     { tab: "ingame", diff: "easy", name: "Tunnel Vision", description: "Game over from clapping Lucy or Sans even after revealing their card" },
+      againstallodds:   { tab: "ingame", diff: "hard", name: "Against All Odds", description: "Die from a heart attack" },
+      momentum:         { tab: "ingame", diff: "medium", name: "Momentum", description: "Reach 20x streak" },
+      horrorMovie:      { tab: "ingame", diff: "hard", name: "Horror Movie", description: "Reach 100 score in hard mode" },
+
+      // CLAPS
+      clappedDennis:  { tab: "clap", diff: "medium", name: "I'M HYPERFOLDING IT", description: "Clap Dennis 10 times in one game" },
+      clappedAndy:    { tab: "clap", diff: "medium", name: "Put On The Cowsuit Bro", description: "Clap Andy 10 times in one game" },
+      clappedKai:     { tab: "clap", diff: "medium", name: "Big Black Japanese Man", description: "Clap Kai 10 times in one game" },
+      clappedSai:     { tab: "clap", diff: "medium", name: "Amogus Sex Plushie", description: "Clap Sai 10 times in one game" },
+      clappedMatt:    { tab: "clap", diff: "medium", name: "Femboy Feet", description: "Clap Matt 10 times in one game" },
+      clappedZewonie: { tab: "clap", diff: "medium", name: "Quite Possibly My Biggest 'Hear Me Out'", description: "Clap Kj 10 times in one game" },
+      clappedIqnore:  { tab: "clap", diff: "medium", name: "I'm Saving This Shit To My Gallery", description: "Clap Iqnore 10 times in one game" },
+      clappedZhiynl:  { tab: "clap", diff: "medium", name: "DRINK THE PEE NOW NOWWWWW", description: "Clap Zhiynl 10 times in one game" },
+      clappedAry:     { tab: "clap", diff: "medium", name: "FEMALE COUNTERPART SUPREMACY", description: "Clap Ary 10 times in one game" },
+      clappedEdd:     { tab: "clap", diff: "medium", name: "His Mother Is Still Better", description: "Clap Edd 10 times in one game" },
+      clappedWin:     { tab: "clap", diff: "medium", name: "First One To Fall Asleep In The Sleepover", description: "Clap Win 10 times in one game" },
+      clappedHieu:    { tab: "clap", diff: "medium", name: "Only Ethical Gooning 😡", description: "Clap Hieu 10 times in one game" },
+      clappedMido:    { tab: "clap", diff: "medium", name: "Necrophiliac", description: "Clap Mido 10 times in one game" },
+      clappedSans:    { tab: "clap", diff: "hard", name: "Stinking, Disgusting, Walking Hazard", description: "Clap Sans 10 times in one game" }
     };
+
+    // keys of achievements whose coins have already been claimed (signed, so it can't be wiped to farm coins)
+    let claimedKeys = [];
+    let claimAllowed = !!coinGrant;
+
+    function showToast(text) {
+      const toast = document.getElementById("coin-toast");
+      toast.textContent = text;
+      toast.classList.add("show");
+      setTimeout(() => toast.classList.remove("show"), 2500);
+    }
+
+    function renderRewardRow(div, key) {
+      const ach = defaultAchievements[key];
+      const row = div.querySelector(".reward-row");
+      const unlocked = div.classList.contains("unlocked");
+      const claimed = claimedKeys.includes(key);
+
+      let html = `<span class="coins">+${REWARDS[ach.diff]} 🪙</span>`;
+      if (unlocked && claimed) {
+        html += `<span class="claimed-tag">CLAIMED</span>`;
+      } else if (unlocked) {
+        html += `<button class="claim-btn" data-claim="${key}"${claimAllowed ? "" : " disabled"}>CLAIM</button>`;
+      }
+      row.innerHTML = html;
+    }
+
+    function claimAchievement(key) {
+      if (!claimAllowed || !coinGrant || claimedKeys.includes(key)) return;
+      const ach = defaultAchievements[key];
+      const saved = JSON.parse(localStorage.getItem("achievements") || "{}");
+      if (!ach || !saved[key]) return; // can't claim what isn't unlocked
+
+      // mark as claimed first so a double click can't pay twice
+      claimedKeys.push(key);
+      coinGrant.store("achRewarded", claimedKeys);
+
+      const reward = REWARDS[ach.diff];
+      coinGrant.add(reward, true); // flat, ignores shop multipliers
+      showToast(`+${reward} 🪙`);
+
+      const sfx = document.getElementById("click-sfx");
+      if (sfx) { sfx.currentTime = 0; sfx.play().catch(() => {}); }
+
+      renderRewardRow(document.querySelector(`.achievement[data-key="${key}"]`), key);
+    }
 
     function loadAchievements() {
       const saved = JSON.parse(localStorage.getItem("achievements") || "{}");
-      document.querySelectorAll(".achievement").forEach(div => {
-        const key = div.dataset.key;
-        const ach = defaultAchievements[key];
-        if (!ach) return;
-        const unlocked = saved[key];
 
-        if (unlocked) {
+      if (coinGrant) {
+        const r = coinGrant.load("achRewarded");
+        if (r.state === "ok" && Array.isArray(r.value)) {
+          claimedKeys = r.value;
+        } else if (r.state === "tampered") {
+          // fail closed: mark everything unlocked as claimed, give nothing
+          claimedKeys = Object.keys(defaultAchievements).filter(k => saved[k]);
+          claimAllowed = false;
+        } else {
+          // first run of the signed version: import the old plain list if there was one
+          try { claimedKeys = JSON.parse(localStorage.getItem("achievementsRewarded") || "[]"); } catch {}
+        }
+      }
+
+      Object.keys(defaultAchievements).forEach(key => {
+        const ach = defaultAchievements[key];
+        const list = document.querySelector(`[data-list="${ach.tab}"]`);
+        if (!list) return;
+
+        const div = document.createElement("div");
+        div.className = `achievement ${ach.diff}`;
+        div.dataset.key = key;
+
+        if (saved[key]) {
           div.classList.add("unlocked");
           if (saved[key] === "new") {
             div.classList.add("newly-unlocked");
@@ -203,12 +418,31 @@
         }
 
         div.innerHTML = `
-          <div class="name">🎖️ ${ach.name}</div>
-          <div class="desc">${ach.description}</div>
-          <div>Status: <b>${unlocked ? "UNLOCKED ✅" : "LOCKED ❌"}</b></div>
+          <div class="strip"></div>
+          <img class="trophy" src="assets/trophy.png" alt="">
+          <span class="spark s1">✦</span><span class="spark s2">✦</span><span class="spark s3">✦</span>
+          <div class="info">
+            <div class="name">${ach.name}</div>
+            <div class="desc">${ach.description}</div>
+            <div class="reward-row"></div>
+          </div>
         `;
+        list.appendChild(div);
+        renderRewardRow(div, key);
       });
+
+      // persist the (possibly imported / reset) claimed list
+      if (coinGrant) {
+        coinGrant.store("achRewarded", claimedKeys);
+        localStorage.removeItem("achievementsRewarded");
+      }
     }
+
+    // one listener for every CLAIM button
+    document.getElementById("achievements-container").addEventListener("click", e => {
+      const btn = e.target.closest(".claim-btn");
+      if (btn && !btn.disabled) claimAchievement(btn.dataset.claim);
+    });
 
     loadAchievements();
   </script>
@@ -216,8 +450,6 @@
   <script>
   const hoverSfx = document.getElementById('hover-sfx');
   const clickSfx = document.getElementById('click-sfx');
-
-  // Tab buttons
   const tabs = document.querySelectorAll('.tab-btn');
   const sections = document.querySelectorAll('.tab-section');
 
@@ -237,7 +469,6 @@
     });
   });
 
-  // Nav buttons
   const navButtons = document.querySelectorAll('.nav-btn');
   navButtons.forEach(btn => {
     btn.addEventListener('pointerenter', () => {
@@ -254,7 +485,6 @@
     });
   });
 
-  // Autoplay piano music on first interaction
   const pianoMusic = document.getElementById("piano-music");
   document.addEventListener("click", () => {
     if (pianoMusic && pianoMusic.paused) pianoMusic.play().catch(()=>{});

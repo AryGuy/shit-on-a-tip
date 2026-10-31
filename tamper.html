@@ -115,7 +115,7 @@
   <div id="black-overlay"></div>
   <div id="achievement-popup" class="achievement-popup"></div>
 
-  <audio id="bg-music" src="assets/Agartha.mp3" loop></audio>
+  <audio id="bg-music" src="assets/songs/Agartha.mp3" loop></audio>
   <audio id="shot-sfx" src="assets/shotgunblast.mp3"></audio>
   <audio id="achievement-sfx" src="achievement.mp3"></audio>
 
@@ -152,7 +152,6 @@
       document.body.addEventListener('click', clickToPlay);
     });
 
-    /* ======================= Typewriter Effect ======================= */
     let typeWriterInterval;
     function typeWriterEffect(text, element, delay=25, callback) {
       clearInterval(typeWriterInterval);
@@ -183,7 +182,6 @@
       nextLine();
     }
 
-    // Zhiynl monologue
     const monologue = [
       "SO I CAUGHT YO ASS TAMPERING AROUND THE CONSOLE LOG",
       "WAS THIS CASH PROMISED TO YOU THREE THOUSAND YEARS AGO",

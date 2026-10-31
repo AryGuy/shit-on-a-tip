@@ -1,604 +1,726 @@
-// ==========================
-// ZHIYNL SHOP SCRIPT
-// ==========================
+/* =====================================================================
+   shop.js
+   Sections:
+     1. Config
+     2. Helpers (DOM, storage, audio, achievements, pricing, fades)
+     3. Dialogue (typewriter, sprite, conversation menu)
+     4. Music & mute
+     5. Button sound effects
+     6. Shop UI (notebook, tabs)
+     7. Purchasing
+     8. Effects (money, boombox easter egg)
+     9. Init
+   ===================================================================== */
 
-// Just handle sprite randomization — the rest lives in shop.html
-function setRandomSprite() {
-  const img = document.getElementById("zhiynl-sprite");
-  if (!img) return;
-  const randomIndex = Math.floor(Math.random() * 5);
-  img.src = `assets/zhiynl-neutral${randomIndex + 1}.png`;
-}
+/* ======================= 1. Config ======================= */
 
-// Run when page loads
-window.addEventListener("load", setRandomSprite);
+const SPRITE_COUNT     = 5;
+const TYPEWRITER_DELAY = 25;
+const BOOMBOX_CHANCE   = 0.2;
+const CHARACTER_PRICE_NORMAL   = 500;
+const CHARACTER_PRICE_INFLATED = 1500;
+const HARD_MODE_PRICE_NORMAL   = 200;
+const HARD_MODE_PRICE_INFLATED = 1000;
 
+const NOTICE_IMMEDIATELY = false;
 
-    /* ======================= Music Setup ======================= */
-const trackList = ['assets/shop-theme.mp3','assets/StoreDay2.mp3','assets/StoreDay3.mp3','assets/StoreDay4.mp3'];
-const shopMusic = document.getElementById('shop-music');
-const fromTamper = sessionStorage.getItem('completedTamper') === 'true';
+const SHOP_TRACKS  = [
+  'assets/songs/shop-theme.mp3',
+  'assets/songs/StoreDay2.mp3',
+  'assets/songs/StoreDay3.mp3',
+  'assets/songs/StoreDay4.mp3',
+];
+const TAMPER_TRACK = 'assets/songs/Agartha.mp3';
+const EURO_TRACKS  = [
+  'assets/songs/TickKissMe.mp3',
+  'assets/songs/LuckyTwiceLucky.mp3',
+  'assets/songs/VRIL.mp3',
+  'assets/songs/OnTheFloor.mp3',
+  'assets/songs/HowDoYouDo.mp3',
+  'assets/songs/idk.mp3',
+  'assets/songs/AllTheThings.mp3',
+];
 
-if (fromTamper) {
-  shopMusic.src = 'assets/AllTheThings.mp3';
-} else {
-  const trackList = ['assets/shop-theme.mp3','assets/StoreDay2.mp3','assets/StoreDay3.mp3','assets/StoreDay4.mp3'];
-  shopMusic.src = trackList[Math.floor(Math.random() * trackList.length)];
-}
-
-// Try autoplay
-shopMusic.play().catch(() => {
-  const clickToPlay = () => {
-    shopMusic.play().catch(err => console.warn("Audio still blocked:", err));
-    document.removeEventListener('click', clickToPlay);
-  };
-  document.addEventListener('click', clickToPlay);
-});
-
-document.getElementById('exit-btn').addEventListener('click', () => window.location.href='index.html');
-    
-    /* ========== Hover & Click Sounds for Buttons ========== */
-const hoverSfx = document.getElementById('hover-sfx');
-const clickSfx = document.getElementById('click-sfx');
-
-function attachButtonSFX(button) {
-  if (!button.hasAttribute('data-sfx')) { // prevent duplicates
-    button.addEventListener('pointerenter', () => {
-      hoverSfx.currentTime = 0;
-      hoverSfx.play().catch(()=>{});
-    });
-    button.addEventListener('click', () => {
-      clickSfx.currentTime = 0;
-      clickSfx.play().catch(()=>{});
-    });
-    button.setAttribute('data-sfx', 'true');
-  }
-}
-
-// Attach to existing buttons immediately
-document.querySelectorAll('button').forEach(attachButtonSFX);
-
-// Observe DOM changes for new buttons
-const observer = new MutationObserver(() => {
-  document.querySelectorAll('button').forEach(attachButtonSFX);
-});
-observer.observe(document.body, { childList: true, subtree: true });
-
-/* ======================= Hard Mode Load Check ======================= */
-const hardModeBtn = document.querySelector('.buy-item[data-id="Hard Mode"]');
-if (localStorage.getItem("hardModeBought") === "true" && hardModeBtn) {
-    hardModeBtn.disabled = true;
-    hardModeBtn.textContent = "Hard Mode - ✅ Purchased";
-    hardModeBtn.style.opacity = "0.5";
-    hardModeBtn.style.cursor = "not-allowed";
-}
-
-// ======================= Achievement Check =======================
-function checkPreIndividualsAchievement() {
-  const unlocked = JSON.parse(localStorage.getItem("unlockedCharacters") || "[]");
-
-  if (unlocked.length >= 3) { // 3 or more characters unlocked
-    const achievements = JSON.parse(localStorage.getItem("achievements") || "{}");
-
-    if (!achievements.preIndividuals) {
-      achievements.preIndividuals = "true";
-      localStorage.setItem("achievements", JSON.stringify(achievements));
-
-      // Optional visual feedback
-      const popup = document.getElementById("achievement-popup");
-      if (popup) {
-        popup.innerHTML = "🏆 Achievement Unlocked: Pre-Individuals";
-        popup.classList.add("show");
-        setTimeout(() => popup.classList.remove("show"), 4000);
-      }
-
-      const achSfx = document.getElementById("achievement-sfx");
-      if (achSfx) { achSfx.currentTime = 0; achSfx.play().catch(()=>{}); }
-    }
-  }
-}
-// ======================= Boombox Easter Egg Achievement =======================
-function checkBoomboxShop() {
-  const achievements = JSON.parse(localStorage.getItem("achievements") || "{}");
-
-  if (!achievements.boomboxEasterEgg) {
-    achievements.boomboxEasterEgg = "true";
-    localStorage.setItem("achievements", JSON.stringify(achievements));
-
-    // Optional visual feedback
-    const popup = document.getElementById("achievement-popup");
-    if (popup) {
-      popup.innerHTML = "🏆 Achievement Unlocked: #SAVEEUROPE";
-      popup.classList.add("show");
-      setTimeout(() => popup.classList.remove("show"), 4000);
-    }
-
-    const achSfx = document.getElementById("achievement-sfx");
-    if (achSfx) { achSfx.currentTime = 0; achSfx.play().catch(()=>{}); }
-  }
-}
-
-    /* ======================= Typewriter Effect ======================= */
-    let typeWriterInterval; // global variable to track interval
-
-function typeWriterEffect(text, element, delay=25, callback) {
-    clearInterval(typeWriterInterval); // cancel any previous typewriter
-    let i = 0;
-    element.textContent = '';
-    typeWriterInterval = setInterval(() => {
-        element.textContent += text[i] || '';
-        i++;
-        if(i >= text.length) {
-            clearInterval(typeWriterInterval);
-            if(callback) callback();
-        }
-    }, delay);
-}
-
-    /* ======================= Sprite Click Insults ======================= */
-    const zhiynlSprite = document.getElementById("zhiynl-sprite");
-    const zhiynlDialogue = document.getElementById("zhiynl-dialogue");
-    const sfx = document.getElementById("insult-sfx");
-    const zhiynlInsults = [
-      "SCHLAWG", "I FEEL LIKE NAPOLEON", "BRO",
-      "STOPPINGS STOOOPP", "IF THIS GAME BREAKS YOU'RE RESPONSIBLE FOR IT"
-    ];
-
-    zhiynlSprite.addEventListener("click", ()=>{
-      const insult = zhiynlInsults[Math.floor(Math.random()*zhiynlInsults.length)];
-      zhiynlDialogue.textContent = insult;
-      zhiynlSprite.classList.add("squish");
-      setTimeout(()=> zhiynlSprite.classList.remove("squish"),150);
-      if(sfx){ sfx.currentTime=0; sfx.play().catch(err=>console.warn("Audio blocked:", err)); }
-    });
-
-    /* ======================= Conversation Logic ======================= */
-    const talkBtn = document.getElementById("talk-btn");
-    const convoBox = document.getElementById("conversation-box");
-    talkBtn.addEventListener("click", ()=>{
-      convoBox.style.display = window.getComputedStyle(convoBox).display !== "none" ? "none" : "block";
-    });
-
-    document.querySelectorAll(".dialogue-option").forEach(btn=>{
-      btn.addEventListener("click", ()=>{
-        const replies = btn.dataset.replies ? JSON.parse(btn.dataset.replies) : [btn.dataset.reply];
-        let i=0;
-        function nextLine(){
-          if(i<replies.length){
-            typeWriterEffect(replies[i], zhiynlDialogue, 25, ()=>{
-              i++;
-              setTimeout(nextLine, i>=replies.length?1000:600);
-            });
-          } else convoBox.style.display = "block";
-        }
-        nextLine();
-        convoBox.style.display="none";
-      });
-    });
-
-/* ======================= Purchase Logic ======================= */
-// ======= Authoritative item table =======
-const ITEMS = {
-  "Packaged Air": { cost: 1, type: "item" },
-  "Tax Evasion": { cost: 100, type: "upgrade", key: "upgrade_TaxEvasion" },
-  "Money Printing Machine": { cost: 200, type: "upgrade", key: "upgrade_MoneyMachine" },
-  "Kill The Government": { cost: 1000, type: "upgrade", key: "upgrade_KillGov" },
-  "Andy": { cost: 500, type: "character" },
-  "Sai": { cost: 500, type: "character" },
-  "Kj": { cost: 500, type: "character" },
-  "Hard Mode": { cost: 200, type: "misc" },
+const DEFAULT_BEAT = { bpm: 150, offset: 0 };
+const EURO_BEATS = {
+  'assets/songs/TickKissMe.mp3':      { bpm: 121, offset: 0 },
+  'assets/songs/LuckyTwiceLucky.mp3': { bpm: 160, offset: 0 },
+  'assets/songs/VRIL.mp3':            { bpm: 138, offset: 0 },
+  'assets/songs/OnTheFloor.mp3':      { bpm: 116, offset: 0 },
+  'assets/songs/HowDoYouDo.mp3':      { bpm: 150, offset: 0 },
+  'assets/songs/idk.mp3':             { bpm: 150, offset: 0 },
+  'assets/songs/AllTheThings.mp3':    { bpm: 113, offset: 0 },
 };
 
-// attach guarded purchase handler
-document.querySelectorAll('.buy-item').forEach(button => {
-  button.addEventListener('click', guardedBuy, { passive: false });
+// type: "item" | "upgrade" | "character" | "misc"
+// (character cost is overridden by getItemCost(), see Helpers)
+const ITEMS = {
+  "Packaged Air":           { cost: 1,    type: "item" },
+  "Tax Evasion":            { cost: 100,  type: "upgrade", key: "upgrade_TaxEvasion",   line: "ONE MUST IMAGINE TAX EVASION AS THE STARTING STEPS TO OVERTHROWING CAPITALISM" },
+  "Money Printing Machine": { cost: 200,  type: "upgrade", key: "upgrade_MoneyMachine", line: "MONEY IS A SUPERFICIAL MAN-MADE CONCEPT" },
+  "Kill The Government":    { cost: 1000, type: "upgrade", key: "upgrade_KillGov",      line: "QUICK HIDE THE BODY" },
+  "Andy":                   { cost: 500,  type: "character" },
+  "Sai":                    { cost: 500,  type: "character" },
+  "Kj":                     { cost: 500,  type: "character" },
+  "Win":                    { cost: 500,  type: "character" },
+  "Dennis":                 { cost: 500,  type: "character" },
+  "Kai":                 { cost: 500,  type: "character" },
+  "Hard Mode":              { cost: 200,  type: "misc", key: "hardModeBought", line: "Well Good Fucking Luck" },
+  "Golden Ticket":          { cost: 2500, type: "misc", key: "goldenTicketBought", line: "TIKY" },
+};
+
+const OWNED_LABEL = {
+  upgrade:   "✅ Activated",
+  character: "✅ Unlocked",
+  misc:      "✅ Purchased",
+};
+
+const SPRITE_INSULTS = [
+  "SCHLAWG",
+  "I FEEL LIKE NAPOLEON",
+  "BRO",
+  "Stop.",
+  "IF THIS GAME BREAKS YOU'RE RESPONSIBLE FOR IT",
+];
+
+const CHARACTER_PURCHASE_LINES = [
+  "I do not support human trafficking.",
+  "COME AGAIN RAHAHAH",
+  "OFFICER I SWEAR, HE JUST ENDED UP THERE",
+];
+
+const BROKE_SEQUENCE = ["YOU", "ARE", "FUCKING", "BBBBBRRRRRRRRRRRRRRRRROOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE"];
+
+const BROKE_FOLLOWUPS = [
+  "boohoo check yo wallet next time dog",
+  "HOP OFF SBG AND GO GET A JOB",
+  "BROKE BROKE BR",
+  "STRIP CLUB DOWN THE STRIP IS LOOKING FOR POLE DANCERS",
+];
+
+
+/* ======================= 2. Helpers ======================= */
+
+const $ = (id) => document.getElementById(id);
+const pickRandom = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+const store = {
+  getJSON(key, fallback) {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw === null ? fallback : JSON.parse(raw);
+    } catch {
+      return fallback;
+    }
+  },
+  setJSON(key, value) {
+    localStorage.setItem(key, JSON.stringify(value));
+  },
+  isTrue(key) {
+    return localStorage.getItem(key) === "true";
+  },
+};
+
+function playSfx(target) {
+  const el = typeof target === "string" ? $(target) : target;
+  if (!el) return;
+  el.currentTime = 0;
+  el.play().catch(() => {});
+}
+
+function playOneShot(src) {
+  new Audio(src).play().catch(() => {});
+}
+
+function unlockAchievement(key, title) {
+  const achievements = store.getJSON("achievements", {});
+  if (achievements[key]) return;
+
+  achievements[key] = "true";
+  store.setJSON("achievements", achievements);
+
+  const popup = $("achievement-popup");
+  if (popup) {
+    popup.innerHTML = `🏆 Achievement Unlocked: ${title}`;
+    popup.classList.add("show");
+    setTimeout(() => popup.classList.remove("show"), 4000);
+  }
+  playSfx("achievement-sfx");
+}
+
+/* ---- Pricing / price notice ---- */
+
+function hasPreIndividuals() {
+  return !!store.getJSON("achievements", {}).preIndividuals;
+}
+
+function priceNoticeSeen() {
+  return store.isTrue("priceNoticeSeen");
+}
+
+// Pre-Individuals unlocked, but the cutscene hasn't played yet.
+function isPriceNoticePending() {
+  return hasPreIndividuals() && !priceNoticeSeen();
+}
+
+// Items affected by the price notice.
+function isPriceHiked(itemId, item) {
+  return item.type === "character" || itemId === "Hard Mode";
+}
+
+function getItemCost(itemId, item) {
+  if (item.type === "character") {
+    return priceNoticeSeen() ? CHARACTER_PRICE_INFLATED : CHARACTER_PRICE_NORMAL;
+  }
+  if (itemId === "Hard Mode") {
+    return priceNoticeSeen() ? HARD_MODE_PRICE_INFLATED : HARD_MODE_PRICE_NORMAL;
+  }
+  return item.cost;
+}
+
+function checkPreIndividualsAchievement() {
+  const unlocked = store.getJSON("unlockedCharacters", []);
+  if (unlocked.length >= 3) unlockAchievement("preIndividuals", "Pre-Individuals");
+  refreshPrices();
+
+  if (NOTICE_IMMEDIATELY && isPriceNoticePending()) {
+    setTimeout(() => fadeTo("pricenotice.html"), 3000);
+  }
+}
+
+function checkBoomboxAchievement() {
+  unlockAchievement("boomboxEasterEgg", "#SAVEEUROPE");
+}
+
+/* ---- Screen fades ---- */
+
+let leaving = false;
+
+function fadeTo(url, ms = 800) {
+  if (leaving) return;
+  leaving = true;
+
+  const veil = document.createElement("div");
+  Object.assign(veil.style, {
+    position: "fixed", inset: "0", background: "#000", opacity: "0",
+    transition: `opacity ${ms}ms ease`, zIndex: "99999",
+  });
+  document.body.appendChild(veil);
+  void veil.offsetWidth; // flush so the transition actually runs
+  veil.style.opacity = "1";
+
+  setTimeout(() => { window.location.href = url; }, ms);
+}
+
+function fadeInFromBlack(ms = 800) {
+  const veil = document.createElement("div");
+  Object.assign(veil.style, {
+    position: "fixed", inset: "0", background: "#000", opacity: "1",
+    transition: `opacity ${ms}ms ease`, zIndex: "99999", pointerEvents: "none",
+  });
+  document.body.appendChild(veil);
+  requestAnimationFrame(() => { veil.style.opacity = "0"; });
+  setTimeout(() => veil.remove(), ms + 50);
+}
+
+
+/* ======================= 3. Dialogue ======================= */
+
+const dialogueEl = $("zhiynl-dialogue");
+const sprite     = $("zhiynl-sprite");
+const talkBtn    = $("talk-btn");
+const convoBox   = $("conversation-box");
+
+let typeWriterInterval;
+
+function typeWriterEffect(text, element, delay = TYPEWRITER_DELAY, callback) {
+  clearInterval(typeWriterInterval);
+  let i = 0;
+  element.textContent = "";
+  typeWriterInterval = setInterval(() => {
+    element.textContent += text[i] || "";
+    i++;
+    if (i >= text.length) {
+      clearInterval(typeWriterInterval);
+      if (callback) callback();
+    }
+  }, delay);
+}
+
+function typeLines(lines, element, { gap = 600, finalGap = gap, onDone } = {}) {
+  let i = 0;
+  const next = () => {
+    if (i >= lines.length) {
+      if (onDone) onDone();
+      return;
+    }
+    typeWriterEffect(lines[i], element, TYPEWRITER_DELAY, () => {
+      i++;
+      setTimeout(next, i >= lines.length ? finalGap : gap);
+    });
+  };
+  next();
+}
+
+function setRandomSprite() {
+  if (!sprite) return;
+  const n = Math.floor(Math.random() * SPRITE_COUNT) + 1;
+  sprite.src = `assets/zhiynl-neutral${n}.png`;
+}
+
+sprite.addEventListener("click", () => {
+  dialogueEl.textContent = pickRandom(SPRITE_INSULTS);
+  sprite.classList.add("squish");
+  setTimeout(() => sprite.classList.remove("squish"), 150);
+  playSfx("insult-sfx");
+});
+
+talkBtn.addEventListener("click", () => {
+  const isOpen = getComputedStyle(convoBox).display !== "none";
+  convoBox.style.display = isOpen ? "none" : "block";
+});
+
+/* ---- Backyard intro: shop music dies, caravan.mp3 slowly fades in, Zhiynl walks off ---- */
+
+const CARAVAN_VOL      = 0.35;  // matches MUSIC_VOL in dogkilling.html
+const SHOP_FADE_OUT_MS = 1200;
+const CARAVAN_FADE_MS  = 6000;
+let caravanMusic = null;
+
+function fadeVolume(audio, to, ms, onDone) {
+  const from = audio.volume;
+  const t0 = performance.now();
+  const tick = (now) => {
+    const k = Math.min(1, (now - t0) / ms);
+    audio.volume = Math.max(0, Math.min(1, from + (to - from) * k));
+    if (k < 1) requestAnimationFrame(tick);
+    else if (onDone) onDone();
+  };
+  requestAnimationFrame(tick);
+}
+
+function startCaravanCrossfade() {
+  if (caravanMusic) return;
+
+  // stop whatever is playing in the shop
+  [shopMusic, window.euroMusic, $("boombox-music")].forEach((a) => {
+    if (a && !a.paused) fadeVolume(a, 0, SHOP_FADE_OUT_MS, () => a.pause());
+  });
+
+  caravanMusic = new Audio("assets/caravan.mp3");
+  caravanMusic.loop = true;
+  caravanMusic.volume = 0;
+  caravanMusic.muted = musicMuted;
+  caravanMusic.play().then(() => {
+    fadeVolume(caravanMusic, CARAVAN_VOL, CARAVAN_FADE_MS);
+  }).catch(() => {});
+}
+
+function backyardWalkOff(url) {
+  typeWriterEffect("U WAIT OUTSIDE TILL IM DONE KAI", dialogueEl);
+
+  const dist = window.innerWidth + sprite.offsetWidth;
+  const walk = sprite.animate(
+    [{ translate: "0 0" }, { translate: `${dist}px 0` }],
+    { duration: 2800, easing: "ease-in", fill: "forwards" }
+  );
+  sprite.animate(
+    [{ transform: "translateY(0)" }, { transform: "translateY(-12px)" }, { transform: "translateY(0)" }],
+    { duration: 420, iterations: 7 }
+  );
+
+  walk.onfinish = () => {
+    // let the level pick the song up where it is
+    if (caravanMusic) sessionStorage.setItem("caravanResume", String(caravanMusic.currentTime));
+    setTimeout(() => fadeTo(url), 500);
+  };
+}
+
+document.querySelectorAll(".dialogue-option").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const replies = btn.dataset.replies
+      ? JSON.parse(btn.dataset.replies)
+      : [btn.dataset.reply];
+
+    convoBox.style.display = "none";
+    const isBackyard = btn.id === "zhiynl-secret";
+    if (isBackyard) startCaravanCrossfade();
+    typeLines(replies, dialogueEl, {
+      gap: 600,
+      finalGap: 1000,
+      onDone: () => {
+        if (isBackyard) { backyardWalkOff(btn.dataset.goto); return; }
+        if (btn.dataset.goto) { fadeTo(btn.dataset.goto); return; }
+        convoBox.style.display = "block";
+      },
+    });
+  });
+});
+
+
+/** Secret Zhiynl option: Golden Ticket + Pre-Individuals + playing as Kai, and not unlocked yet. */
+function updateSecretOption() {
+  const btn = $("zhiynl-secret");
+  if (!btn) return;
+  const show =
+    store.isTrue("goldenTicketBought") &&
+    hasPreIndividuals() &&
+    sessionStorage.getItem("playerCharacter") === "Kai" &&
+    !store.getJSON("unlockedCharacters", []).includes("Zhiynl");
+  btn.style.display = show ? "" : "none";
+}
+
+
+/* ======================= 4. Music & mute ======================= */
+
+const shopMusic  = $("shop-music");
+const muteBtn    = $("mute-btn");
+const fromTamper = sessionStorage.getItem("completedTamper") === "true";
+
+let musicMuted = store.getJSON("musicMuted", false);
+
+shopMusic.src = fromTamper ? TAMPER_TRACK : pickRandom(SHOP_TRACKS);
+shopMusic.muted = musicMuted;
+shopMusic.play().catch(() => {
+  const clickToPlay = () => {
+    shopMusic.play().catch((err) => console.warn("Audio still blocked:", err));
+    document.removeEventListener("click", clickToPlay);
+  };
+  document.addEventListener("click", clickToPlay);
+});
+
+function renderMuteButton() {
+  muteBtn.textContent = musicMuted ? "🔇" : "🔊";
+}
+renderMuteButton();
+
+muteBtn.addEventListener("click", () => {
+  musicMuted = !musicMuted;
+  shopMusic.muted = musicMuted;
+  if (window.euroMusic) window.euroMusic.muted = musicMuted;
+  store.setJSON("musicMuted", musicMuted);
+  renderMuteButton();
+});
+
+$("exit-btn").addEventListener("click", () => {
+  window.location.href = "index.html";
+});
+
+
+/* ======================= 5. Button sound effects ======================= */
+
+function attachButtonSFX(button) {
+  if (button.hasAttribute("data-sfx")) return; // already wired
+  button.addEventListener("pointerenter", () => playSfx("hover-sfx"));
+  button.addEventListener("click",        () => playSfx("click-sfx"));
+  button.setAttribute("data-sfx", "true");
+}
+
+document.querySelectorAll("button").forEach(attachButtonSFX);
+
+new MutationObserver((mutations) => {
+  for (const { addedNodes } of mutations) {
+    addedNodes.forEach((node) => {
+      if (node.nodeType !== Node.ELEMENT_NODE) return;
+      if (node.matches("button")) attachButtonSFX(node);
+      node.querySelectorAll("button").forEach(attachButtonSFX);
+    });
+  }
+}).observe(document.body, { childList: true, subtree: true });
+
+
+/* ======================= 6. Shop UI ======================= */
+
+const shopNotebook = $("shop-notebook");
+shopNotebook.style.display = "none";
+
+$("buy-btn").addEventListener("click", () => {
+  const isVisible = shopNotebook.style.display !== "none";
+  shopNotebook.style.display = isVisible ? "none" : "block";
+});
+
+const tabButtons   = document.querySelectorAll(".tab-btn");
+const shopSections = document.querySelectorAll(".shop-section");
+
+function activateTab(btn) {
+  const section = $("tab-" + btn.dataset.tab);
+  tabButtons.forEach((b) => b.classList.toggle("active", b === btn));
+  shopSections.forEach((s) => s.classList.toggle("active", s === section));
+}
+
+tabButtons.forEach((btn) => btn.addEventListener("click", () => activateTab(btn)));
+if (tabButtons.length > 0) activateTab(tabButtons[0]);
+
+
+/* ======================= 7. Purchasing ======================= */
+
+function findBuyButton(itemId) {
+  return (
+    document.querySelector(`.buy-item[data-id="${itemId}"]`) ||
+    Array.from(document.querySelectorAll(".buy-item"))
+      .find((b) => b.textContent.startsWith(itemId))
+  );
+}
+
+function markOwned(button, itemId, type) {
+  if (!button) return;
+  button.disabled = true;
+  button.textContent = `${itemId} - ${OWNED_LABEL[type]}`;
+  button.style.opacity = "0.5";
+  button.style.cursor = "not-allowed";
+}
+
+function isOwned(itemId, item) {
+  if (item.type === "character") {
+    return store.getJSON("unlockedCharacters", []).includes(itemId);
+  }
+  if (item.key) return store.isTrue(item.key);
+  return false; // plain consumables are never "owned"
+}
+
+/** Sync unowned hiked buttons (characters + Hard Mode): label + data-cost = current price. */
+function refreshPrices() {
+  document.querySelectorAll(".buy-item").forEach((btn) => {
+    const itemId = btn.dataset.id;
+    const item = ITEMS[itemId];
+    if (!item || !isPriceHiked(itemId, item)) return;
+    if (isOwned(itemId, item)) return; // leave owned buttons alone
+    const cost = getItemCost(itemId, item);
+    btn.dataset.cost = cost;
+    btn.textContent = `${itemId} - ${cost} coins`;
+  });
+}
+
+document.querySelectorAll(".buy-item").forEach((button) => {
+  button.addEventListener("click", guardedBuy);
 });
 
 function guardedBuy(ev) {
   if (!ev.isTrusted) return;
 
   const button = ev.currentTarget;
-  const itemId = (button.dataset.id || button.textContent.split(' - ')[0]).trim();
+  const itemId = (button.dataset.id || button.textContent.split(" - ")[0]).trim();
   const item = ITEMS[itemId];
   if (!item) return;
 
-  const domCost = parseInt(button.dataset.cost || '0', 10);
-  if (domCost !== item.cost) { flashTamperUI(button); return; }
-  if (!window.shopAPI || typeof window.shopAPI.spendCoins !== 'function') return;
-  if (!window.shopAPI.spendCoins(item.cost)) { handleInsufficientFunds(); return; }
+  // Price change is queued but the cutscene hasn't played yet:
+  // block the purchase and send them to the notice instead.
+  if (isPriceHiked(itemId, item) && isPriceNoticePending()) {
+    fadeTo("pricenotice.html");
+    return;
+  }
+
+  const cost = getItemCost(itemId, item);
+
+  const domCost = parseInt(button.dataset.cost || "0", 10);
+  if (domCost !== cost) { flashTamperUI(button); return; }
+
+  if (!window.shopAPI || typeof window.shopAPI.spendCoins !== "function") return;
+  if (!window.shopAPI.spendCoins(cost)) { handleInsufficientFunds(); return; }
 
   handlePurchaseSuccess(itemId, item);
 }
 
-// small UI helpers
-
-const agarthaAudio = new Audio("assets/Agartha.mp3");
-
 function flashTamperUI(button) {
-  // Optional: show visual flag before redirect
-  button.classList.add('tamper-flag');
-  setTimeout(() => button.classList.remove('tamper-flag'), 1200);
-
-  // Redirect immediately
-  window.location.href = 'tamper.html';
+  button.classList.add("tamper-flag");
+  setTimeout(() => button.classList.remove("tamper-flag"), 1200);
+  window.location.href = "tamper.html";
 }
 
 function handleInsufficientFunds() {
-  // Screen shake
-  const shopContainer = document.getElementById("shop-container");
+  const shopContainer = $("shop-container");
   shopContainer.classList.add("shake");
   setTimeout(() => shopContainer.classList.remove("shake"), 400);
 
-  // Play sound
-  const insufficientSfx = document.getElementById("insufficient-sfx");
-  if (insufficientSfx) {
-    insufficientSfx.currentTime = 0;
-    insufficientSfx.play().catch(err => console.warn("Audio blocked:", err));
+  const sfx = $("insufficient-sfx");
+  if (sfx) {
+    sfx.currentTime = 0;
+    sfx.play().catch((err) => console.warn("Audio blocked:", err));
   }
 
-  // Zhiynl roast sequence
-  const roast = ["YOU", "ARE", "FUCKING", "BBBBBRRRRRRRRRRRRRRRRROOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKKEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE"];
-  let i = 0;
-
-  function nextRoastLine() {
-    if (i < roast.length) {
-      typeWriterEffect(roast[i], zhiynlDialogue, 25, () => {
-        i++;
-        setTimeout(nextRoastLine, 500);
-      });
-    } else {
-      // After BROKE, pick a random default insult
-      const defaultRoasts = [
-        "boohoo check yo wallet next time dog",
-        "HOP OFF SBG AND GO GET A JOB",
-        "BROKE BROKE BR",
-        "GET A LIFE NIGGA"
-      ];
-      const rand = Math.floor(Math.random() * defaultRoasts.length);
+  typeLines(BROKE_SEQUENCE, dialogueEl, {
+    gap: 500,
+    onDone: () => {
       setTimeout(() => {
-        typeWriterEffect(defaultRoasts[rand], zhiynlDialogue, 25);
+        typeWriterEffect(pickRandom(BROKE_FOLLOWUPS), dialogueEl, TYPEWRITER_DELAY);
       }, 1000);
-    }
-  }
-
-  nextRoastLine();
+    },
+  });
 }
-// ======= Unified purchase success handler =======
+
 function handlePurchaseSuccess(itemId, item) {
-  const button = document.querySelector(`.buy-item[data-id="${itemId}"]`) 
-                 || Array.from(document.querySelectorAll(".buy-item"))
-                         .find(b => b.textContent.startsWith(itemId));
+  const button = findBuyButton(itemId);
 
-  // Upgrade items
-  if (item.type === 'upgrade') {
-    if (item.key && !localStorage.getItem(item.key)) localStorage.setItem(item.key, "true");
-    if (button) {
-      button.disabled = true;
-      button.textContent = `${itemId} - ✅ Activated`;
-      button.style.opacity = "0.5";
-      button.style.cursor = "not-allowed";
+  switch (item.type) {
+    case "upgrade":
+    case "misc":
+      localStorage.setItem(item.key, "true");
+      markOwned(button, itemId, item.type);
+      playOneShot("assets/chaching.mp3");
+      typeWriterEffect(item.line || `${itemId} bought boy`, dialogueEl, TYPEWRITER_DELAY);
+      spawnMoneyFx();
+      updateSecretOption();
+      break;
+
+    case "character": {
+      const unlocked = store.getJSON("unlockedCharacters", []);
+      if (!unlocked.includes(itemId)) {
+        unlocked.push(itemId);
+        store.setJSON("unlockedCharacters", unlocked);
+      }
+      markOwned(button, itemId, "character");
+      checkPreIndividualsAchievement();
+      playSfx("purchase-sfx");
+      spawnMoneyFx();
+      typeWriterEffect(pickRandom(CHARACTER_PURCHASE_LINES), dialogueEl, TYPEWRITER_DELAY);
+      break;
     }
-    new Audio("assets/chaching.mp3").play().catch(() => {});
-    typeWriterEffect(`${itemId} bought boy`, zhiynlDialogue, 25);
-    spawnMoneyFx();
-    return;
-  }
 
-  // Characters
-  // Characters
-if (item.type === 'character') {
-  let unlocked = JSON.parse(localStorage.getItem("unlockedCharacters") || "[]");
-  if (!unlocked.includes(itemId)) {
-    unlocked.push(itemId);
-    localStorage.setItem("unlockedCharacters", JSON.stringify(unlocked));
-    
-    // START OF THE SIMPLIFIED FIX: Apply UI changes directly to the button
-    const button = document.querySelector(`.buy-item[data-id="${itemId}"]`);
-    if (button) {
-        button.disabled = true;
-        button.textContent = `${itemId} - ✅ Unlocked`; // Changed from 'Activated' to 'Unlocked'
-        button.style.opacity = "0.5";
-        button.style.cursor = "not-allowed";
-    }
-    
-        checkPreIndividualsAchievement();
-    // END OF THE SIMPLIFIED FIX
-
-  }
-  const purchaseSfx = document.getElementById("purchase-sfx");
-  if (purchaseSfx) { purchaseSfx.currentTime = 0; purchaseSfx.play().catch(() => {}); }
-  spawnMoneyFx();
-  
-  // REMOVE THIS LINE: refreshShopItems(); // It's no longer needed for instant update
-
-  const zhiyLines = [
-    "I do not support human trafficking (HLEP IM BEING HELD HOSTAGE AND I HAVEMY FREEDOM OF SPEECH SEALED)",
-    "COME AGAIN RAHAHAH",
-    "OFFICER I SWEAR, HE JUST ENDED UP THERE"
-  ];
-  typeWriterEffect(zhiyLines[Math.floor(Math.random()*zhiyLines.length)], zhiynlDialogue, 25);
-  return;
-}
-
-  // Hard Mode
-  if (itemId === "Hard Mode") {
-    localStorage.setItem("hardModeBought", "true");
-    if (button) {
-      button.disabled = true;
-      button.textContent = `${itemId} - ✅ Purchased`;
-      button.style.opacity = "0.5";
-      button.style.cursor = "not-allowed";
-    }
-    new Audio("assets/chaching.mp3").play().catch(() => {});
-    typeWriterEffect(`You bought ${itemId} (you did not have to do this)`, zhiynlDialogue, 25);
-    spawnMoneyFx();
-    return;
-  }
-
-  // Regular items
-  if (button) {
-    new Audio("assets/chaching.mp3").play().catch(() => {});
-    typeWriterEffect(`Thanks for buy ${itemId} boy.`, zhiynlDialogue, 25);
-    spawnMoneyFx();
+    default: // plain items (e.g. Packaged Air)
+      if (!button) return;
+      playOneShot("assets/chaching.mp3");
+      typeWriterEffect(`Thanks for buy ${itemId} boy.`, dialogueEl, TYPEWRITER_DELAY);
+      spawnMoneyFx();
   }
 }
 
-// Money FX
-function spawnMoneyFx(){
-  const container = document.getElementById("fx-container");
-  for(let i=0;i<12;i++){
-    const img=document.createElement("img");
-    img.src="assets/money-wings.gif";
-    img.classList.add("money-fx");
-    img.style.left="50%";
-    img.style.top="50%";
-    img.style.setProperty("--dx",(Math.random()-0.5)*1600+"px");
-    img.style.setProperty("--dy",(Math.random()-0.5)*1600+"px");
-    container.appendChild(img);
-    setTimeout(()=>img.remove(),4500);
-  }
-}
-
-window.addEventListener("DOMContentLoaded", () => {
-  if (Math.random() < 0.2) { // 1/10 chance
-    const fxContainer = document.getElementById("fx-container") || document.body;
-
-    // Create boombox element
-    const boombox = document.createElement("img");
-    boombox.src = "assets/boombox.png";
-    boombox.id = "euro-boombox";
-    boombox.style.position = "absolute";
-    boombox.style.bottom = "30px";
-    boombox.style.right = "40px";
-    boombox.style.width = "296px";
-    boombox.style.height = "auto";
-    boombox.style.imageRendering = "pixelated";
-    boombox.style.zIndex = "999";
-    fxContainer.appendChild(boombox);
-
-    // Pick one of your three tracks randomly
-    const tracks = ["assets/TickKissMe.mp3", "assets/LuckyTwiceLucky.mp3", "assets/VRIL.mp3"];
-    const euroMusic = new Audio(tracks[Math.floor(Math.random() * tracks.length)]);
-    euroMusic.loop = true;
-    euroMusic.volume = 0.5;
-
-    // Stop main shop music
-    const shopMusic = document.getElementById("shop-music");
-    if (shopMusic) {
-      shopMusic.pause();
-      shopMusic.src = "";
-      shopMusic.load();
-    }
-
-    // Respect mute state
-    const musicMuted = JSON.parse(localStorage.getItem("musicMuted") || "false");
-    euroMusic.muted = musicMuted;
-
-    // Play music safely
-    const playMusic = () => euroMusic.play().catch(() => {
-      document.addEventListener("click", () => euroMusic.play().catch(() => {}), { once: true });
-    });
-    playMusic();
-
-    // Bobbing animation
-    boombox.animate(
-      [
-        { transform: "translateY(0)" },
-        { transform: "translateY(-6px)" },
-        { transform: "translateY(0)" }
-      ],
-      { duration: 800, iterations: Infinity }
-    );
-
-    // Unlock boombox achievement
-    checkBoomboxShop();
-  }
-});
-
-
-// ======================= Restore purchased items on load =======================
-window.addEventListener("DOMContentLoaded", () => {
-  // Restore upgrades
+/** Re-apply "owned" state to buttons on page load. */
+function restorePurchasedItems() {
   Object.entries(ITEMS).forEach(([itemId, item]) => {
-    const button = document.querySelector(`.buy-item[data-id="${itemId}"]`) 
-                   || Array.from(document.querySelectorAll(".buy-item"))
-                           .find(b => b.textContent.startsWith(itemId));
+    if (!OWNED_LABEL[item.type]) return;
+    if (isOwned(itemId, item)) markOwned(findBuyButton(itemId), itemId, item.type);
+  });
+}
 
-    if (!button) return;
 
-    // Upgrades
-    if (item.type === "upgrade" && item.key && localStorage.getItem(item.key) === "true") {
-      button.disabled = true;
-      button.textContent = `${itemId} - ✅ Activated`;
-      button.style.opacity = "0.5";
-      button.style.cursor = "not-allowed";
-    }
+/* ======================= 8. Effects ======================= */
 
-    // Characters
-    if (item.type === "character") {
-      const unlocked = JSON.parse(localStorage.getItem("unlockedCharacters") || "[]");
-      if (unlocked.includes(itemId)) {
-        button.disabled = true;
-        button.textContent = `${itemId} - ✅ Unlocked`;
-        button.style.opacity = "0.5";
-        button.style.cursor = "not-allowed";
+function spawnMoneyFx() {
+  const container = $("fx-container");
+  for (let i = 0; i < 12; i++) {
+    const img = document.createElement("img");
+    img.src = "assets/money-wings.gif";
+    img.classList.add("money-fx");
+    img.style.left = "50%";
+    img.style.top = "50%";
+    img.style.setProperty("--dx", (Math.random() - 0.5) * 1600 + "px");
+    img.style.setProperty("--dy", (Math.random() - 0.5) * 1600 + "px");
+    container.appendChild(img);
+    setTimeout(() => img.remove(), 4500);
+  }
+}
+
+function startBoomboxBeat(audioEl, boomboxEl, getTrack) {
+  // Tuning knobs
+  const SCALE_AMOUNT = 0.12;  // how much it grows on the beat
+  const SHAKE_PX     = 7;     // shake distance on the beat
+  const TILT_DEG     = 3;     // random tilt on the beat
+  const SHARPNESS    = 3;     // higher = snappier hit, lower = floatier
+
+  boomboxEl.style.transformOrigin = "center bottom";
+
+  function frame() {
+    requestAnimationFrame(frame);
+
+    let hit = 0;
+    if (!audioEl.paused && !audioEl.ended && audioEl.readyState >= 3) {
+      const beat = EURO_BEATS[getTrack()] || DEFAULT_BEAT;
+      const beatLen = 60 / beat.bpm;
+      const t = audioEl.currentTime - beat.offset;
+      if (t >= 0) {
+        const phase = (t % beatLen) / beatLen;   // 0 = on the beat, →1 = just before next
+        hit = Math.pow(1 - phase, SHARPNESS);
       }
     }
 
-    // Misc (like Hard Mode)
-    if (item.type === "misc" && localStorage.getItem("hardModeBought") === "true") {
-      button.disabled = true;
-      button.textContent = `${itemId} - ✅ Purchased`;
-      button.style.opacity = "0.5";
-      button.style.cursor = "not-allowed";
-    }
-  });
-});
-
-// ======================= Achievement Check on Load =======================
-window.addEventListener("DOMContentLoaded", () => {
-  checkPreIndividualsAchievement();
-});
-    /* ======================= Random Entry Dialogues ======================= */
-const randomEntryDialogues = {
-  default: [
-    "IT ME, DR PEAKINGSTON","Rule number 1: Do not make me Creamy.","SAMSUNG HOME ESTATE",
-    "TOP 10 CUNGADERO","Gonna dead a rape dog.","there is a WHOLE ASS PLAYLIST of RACIST ASS MUSIC",
-    "i blame testers.","YOU AND ME. 100 YEARS. VISIT ZHIY_EATS.COM","I FUCKING HATE",
-    "WHO WAANTS IT FOR FREEEEEEE","My Bad - zhyington","AY I NOT DA TRASH BOY","ts shit so A La Tragik",
-    "CP CP CPP CPPPP","YO BOY JUST BEAT A MOOSE TO DEATH WITH A PENCIL","DAY 1 JELQIN",
-    "AYYY I DAA BAAATTTTMMAAAAAANNNN","KILL IT UAGAGAGAGAGAGG","IT NO WHAT HUH, IT N IT NO DIS DICK IN YO MOUUUUUUTT",
-    "YOURE A FUCKIN G NOBODY","YO KANYE PLEASE THINK OF YOUR BANK ACCOUNT","ding Ding Ding Ding",
-    ":] :] :] :] :] :] :] :]","ikt eptein. Don't. answer","I Just BEAT DOG FoR 30 Minute","God Bless the White Man"
-  ],
-  Andy: [
-    "ANDY IS PREGNAAANNTT","I IDI T ANDY","andy i'll make a dea l, if u dont springlock me i will show u the way to the CP one pieec"
-  ],
-  Sai: [
-    "lets cheer nyaggr sai up!", "the 7 liters of cum waiting for sai:", "hi sai :]"
-  ],
-  Kj: [
-    "sthu before i rape ur tight ass kj", "KJ VOUCHER", "KJ GIVE ME YO SUMBO SAUCE"
-  ],
-};
-
-// Show random entry dialogue based on current character
-window.addEventListener("DOMContentLoaded", () => {
-  const zhiynlDialogue = document.getElementById('zhiynl-dialogue');
-  const convoBox = document.getElementById('conversation-box');
-  if (!zhiynlDialogue || !convoBox) return;
-
-  let lines = [];
-  
-  // Priority: Tamper
-  if (sessionStorage.getItem("completedTamper") === "true") {
-    lines = [
-      "How'd the lead taste?",
-      "You look like you just got pumped by a shotgun",
-    ];
-  } else {
-    const activeChar = sessionStorage.getItem("playerCharacter") || "default";
-    lines = randomEntryDialogues[activeChar] || randomEntryDialogues.default;
+    boomboxEl.style.scale = 1 + hit * SCALE_AMOUNT;
+    boomboxEl.style.translate = `${(Math.random() - 0.5) * 2 * SHAKE_PX * hit}px ${(Math.random() - 0.5) * SHAKE_PX * hit}px`;
+    boomboxEl.style.rotate = `${(Math.random() - 0.5) * 2 * TILT_DEG * hit}deg`;
   }
-
-  zhiynlDialogue.textContent = lines[Math.floor(Math.random() * lines.length)];
-  convoBox.style.display = 'none';
-
-  // Only remove flag **after displaying** to prevent overwriting
-  if (sessionStorage.getItem("completedTamper") === "true") {
-    sessionStorage.removeItem('completedTamper');
-  }
-});
- 
-  // defensive references (safe even if variables already exist)
-  const _convoBox = document.getElementById('conversation-box');
-  const _talkBtn  = document.getElementById('talk-btn');
-
-  // Ensure talk button only toggles the dialogue box (no auto-open)
-  if (_talkBtn && _convoBox) {
-    // Remove any previously attached click handlers (safer) by cloning
-    const newTalk = _talkBtn.cloneNode(true);
-    _talkBtn.parentNode.replaceChild(newTalk, _talkBtn);
-
-    newTalk.addEventListener('click', () => {
-  const isOpen = window.getComputedStyle(_convoBox).display !== 'none';
-  _convoBox.style.display = isOpen ? 'none' : 'block';
-
-  // play click SFX
-  const clickSfx = document.getElementById('click-sfx');
-  if (clickSfx) {
-    clickSfx.currentTime = 0;
-    clickSfx.play().catch(()=>{});
-  }
-});
-
-newTalk.addEventListener('pointerenter', () => {
-  const hoverSfx = document.getElementById('hover-sfx');
-  if (hoverSfx) {
-    hoverSfx.currentTime = 0;
-    hoverSfx.play().catch(()=>{});
-  }
-});
-  }
-  /* ======================= Mute Button Functionality ======================= */
-const muteBtn = document.getElementById("mute-btn");
-const shopMusicEl = document.getElementById("shop-music");
-let musicMuted = JSON.parse(localStorage.getItem("musicMuted") || "false");
-
-// Apply the saved state on load
-shopMusicEl.muted = musicMuted;
-muteBtn.textContent = musicMuted ? "🔇" : "🔊";
-
-muteBtn.addEventListener("click", () => {
-  musicMuted = !musicMuted;
-  shopMusicEl.muted = musicMuted;
-  muteBtn.textContent = musicMuted ? "🔇" : "🔊";
-  localStorage.setItem("musicMuted", JSON.stringify(musicMuted));
-});
-
-/* ======================= Toggle Shop Menu Visibility ======================= */
-const buyButton = document.getElementById("buy-btn");
-const shopNotebook = document.getElementById("shop-notebook"); // container for tabs + sections
-
-// hide notebook by default
-shopNotebook.style.display = "none";
-
-buyButton.addEventListener("click", () => {
-  const isVisible = shopNotebook.style.display !== "none";
-  shopNotebook.style.display = isVisible ? "none" : "block";
-});
-
-/* ======================= SHOP TAB SWITCHING ======================= */
-const tabButtons = document.querySelectorAll(".tab-btn");
-const shopSections = document.querySelectorAll(".shop-section");
-
-tabButtons.forEach(btn => {
-  btn.addEventListener("click", () => {
-    const target = btn.dataset.tab; // "items", "characters", etc.
-
-    // Deactivate all buttons
-    tabButtons.forEach(b => b.classList.remove("active"));
-    btn.classList.add("active");
-
-    // Hide all sections
-    shopSections.forEach(sec => sec.classList.remove("active"));
-
-    // Show selected section
-    const section = document.getElementById("tab-" + target);
-    if (section) section.classList.add("active");
-  });
-});
-
-// Show first tab by default
-if (tabButtons.length > 0) {
-  const firstTab = tabButtons[0];
-  firstTab.classList.add("active");
-  const firstSection = document.getElementById("tab-" + firstTab.dataset.tab);
-  if (firstSection) firstSection.classList.add("active");
+  requestAnimationFrame(frame);
 }
-const devCoinBtn = document.getElementById("dev-coin-btn");
-devCoinBtn.addEventListener("click", () => {
-    shopAPI.addCoins(500); // add 500 coins
-    playSound(clickSound); // optional feedback
-    alert("Added 500 coins (DEV)");
+
+function maybeSpawnBoombox() {
+  if (Math.random() >= BOOMBOX_CHANCE) return;
+
+  const parent = $("fx-container") || document.body;
+
+  const boombox = document.createElement("img");
+  boombox.src = "assets/boombox.png";
+  boombox.id = "euro-boombox";
+  Object.assign(boombox.style, {
+    position: "absolute",
+    bottom: "30px",
+    right: "40px",
+    width: "296px",
+    height: "auto",
+    imageRendering: "pixelated",
+    zIndex: "999",
+  });
+  parent.appendChild(boombox);
+
+  // Silence the normal shop music
+  shopMusic.pause();
+  shopMusic.src = "";
+  shopMusic.load();
+
+  // Shuffled queue: every track plays once before any repeats
+  let euroQueue = [];
+  function nextEuroTrack(previous) {
+    if (euroQueue.length === 0) {
+      euroQueue = [...EURO_TRACKS].sort(() => Math.random() - 0.5);
+      if (euroQueue.length > 1 && euroQueue[0] === previous) {
+        euroQueue.push(euroQueue.shift());
+      }
+    }
+    return euroQueue.shift();
+  }
+
+  let currentEuroTrack = nextEuroTrack();
+  const euroMusic = new Audio(currentEuroTrack);
+  euroMusic.loop = false;
+  euroMusic.volume = 0.5;
+  euroMusic.muted = store.getJSON("musicMuted", false);
+  window.euroMusic = euroMusic;
+
+  euroMusic.addEventListener("ended", () => {
+    currentEuroTrack = nextEuroTrack(currentEuroTrack);
+    euroMusic.src = currentEuroTrack;
+    euroMusic.play().catch(() => {});
+  });
+
+  // "playing" fires when sound actually starts; the others fire when it stops/stalls
+  euroMusic.addEventListener("playing", () => sprite.classList.add("dancing"));
+  ["pause", "waiting", "ended", "emptied"].forEach((evt) =>
+    euroMusic.addEventListener(evt, () => sprite.classList.remove("dancing"))
+  );
+
+  startBoomboxBeat(euroMusic, boombox, () => currentEuroTrack);
+
+  euroMusic.play().catch(() => {
+    document.addEventListener("click", () => euroMusic.play().catch(() => {}), { once: true });
+  });
+
+  checkBoomboxAchievement();
+}
+
+
+/* ======================= 9. Init ======================= */
+
+window.addEventListener("load", setRandomSprite);
+
+window.addEventListener("DOMContentLoaded", () => {
+  if (sessionStorage.getItem("fromPriceNotice") === "true") {
+    sessionStorage.removeItem("fromPriceNotice");
+    fadeInFromBlack();
+  }
+
+  try {
+    maybeSpawnBoombox();
+  } catch (err) {
+    console.error("Boombox failed:", err);
+  }
+  restorePurchasedItems();
+  checkPreIndividualsAchievement();
+  updateSecretOption();
 });

@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>It Yo Boy Zhiy Shop</title>
+  <script>
+    // Bounce anyone who isn't supposed to be here. Add ?test to preview any time.
+    try {
+      const test = new URLSearchParams(location.search).has("test");
+      const a = JSON.parse(localStorage.getItem("achievements") || "{}");
+      const pending = a.preIndividuals && localStorage.getItem("priceNoticeSeen") !== "true";
+      if (!pending && !test) location.replace("shop.html");
+    } catch (e) {}
+  </script>
+  <link rel="stylesheet" href="shop.css">
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    #hand {
+      position: fixed; left: 0; top: 0;
+      /* size is set per-sprite from HAND in the script */
+      z-index: 5000; pointer-events: none;
+      opacity: 0; transition: opacity .3s;
+      will-change: transform;
+    }
+    #hand img { width: 100%; height: 100%; object-fit: contain; display: block; image-rendering: pixelated; }
+    #hand img.tap { animation: hand-tap 220ms ease-out; }
+    @keyframes hand-tap {
+      50% { transform: translateY(10px) scale(.92); }
+    }
+    .price-pop { animation: price-pop 500ms ease-out; }
+    @keyframes price-pop {
+      40% { transform: scale(1.12); }
+    }
+    #veil {
+      position: fixed; inset: 0; background: #000; opacity: 1;
+      transition: opacity 800ms ease; z-index: 99999; pointer-events: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="shop-container">
+    <div id="coin-display">🪙 COINS: <span id="coin-count">0</span></div>
+
+    <div id="zhiynl-container">
+      <img id="zhiynl-sprite" src="assets/zhiynl-neutral1.png" alt="Zhiynl">
+    </div>
+
+    <div id="dialogue-box"><p id="zhiynl-dialogue"></p></div>
+
+    <button id="talk-btn">💬 Conversation</button>
+    <button id="buy-btn">🛒 BUY</button>
+    <button id="exit-btn">GET THE FUCK OUT</button>
+    <button id="mute-btn">🔊</button>
+
+    <!-- ===== Shop Tabs (copied from shop.html) ===== -->
+    <div id="shop-notebook">
+      <div id="shop-tabs">
+        <button class="tab-btn active" data-tab="items">Items</button>
+        <button class="tab-btn" data-tab="characters">Characters</button>
+        <button class="tab-btn" data-tab="misc">Misc</button>
+      </div>
+
+      <!-- ===== Shop Sections ===== -->
+      <div id="shop-sections">
+        <div class="shop-section" id="tab-items">
+          <h3>Items:</h3>
+          <ul>
+            <li><button class="buy-item" data-cost="1" data-id="Packaged Air" data-description="Is this a scam?">Packaged Air - 1 coin</button></li>
+            <li><button class="buy-item" data-cost="100" data-id="Tax Evasion" data-description="2x Coin Gain">Tax Evasion (2x Coin Gain) - 100 coins</button></li>
+            <li><button class="buy-item" data-cost="200" data-id="Money Printing Machine" data-description="5x Coin Gain (Does not stack)">Money Printing Machine (5x Coin Gain) - 200 coins</button></li>
+            <li><button class="buy-item" data-id="Kill The Government" data-cost="1000" data-description="10x Cash Gain (Still does not stack)">Kill The Government - 1000 coins</button></li>
+          </ul>
+        </div>
+
+        <div class="shop-section hidden" id="tab-characters">
+          <h3>Characters:</h3>
+          <ul>
+            <li><button class="buy-item" data-cost="500" data-type="character" data-id="Andy" data-description='"We in Japan, why the hell we going for Chinese?"'>Andy - 500 coins</button></li>
+            <li><button class="buy-item" data-cost="500" data-type="character" data-id="Sai" data-description='"Watch me destroy a 5700$ gold bar with nitric acid."'>Sai - 500 coins</button></li>
+            <li><button class="buy-item" data-cost="500" data-type="character" data-id="Kj" data-description='"YOU FUCKING MMMMMOOOOONNNNNNNKKKKKKKEEEEYYYYYY"'>Kj - 500 coins</button></li>
+            <li><button class="buy-item" data-cost="500" data-type="character" data-id="Win" data-description='Hey do something'>Win - 500 coins</button></li>
+            <li><button class="buy-item" data-cost="500" data-type="character" data-id="Dennis" data-description='"Yo rq bro I need u to get a gender reassignment plz man its urgent"'>Dennis - 500 coins</button></li>
+          </ul>
+        </div>
+
+        <div class="shop-section hidden" id="tab-misc">
+          <h3>Misc:</h3>
+          <ul>
+            <li><button class="buy-item" data-cost="200" data-type="misc" data-id="Hard Mode" data-description="Self explanatory">Hard Mode - 200 Coins</button></li>
+          </ul>
+        </div>
+      </div>
+
+      <div id="item-preview" class="hidden"></div>
+    </div>
+  </div>
+
+  <div id="hand"><img id="hand-img" src="assets/zhiynl-hand-idle.png" alt=""></div>
+  <div id="veil"></div>
+
+  <script src="coinCore.js"></script>
+  <script>
+  /* ---------- Config ---------- */
+  const TEST      = new URLSearchParams(location.search).has("test");
+  const NEW_PRICE = 1500;
+
+  // Per-sprite config:
+  //   size  = rendered height in px (make "wipe" bigger/smaller to taste)
+  //   ratio = image width / height (tap 350x350 = 1, wipe 350x525 = 0.667)
+  //   tip   = the point that touches things, as a fraction of the sprite (x, y)
+  //   lift  = push the hand UP by this many px. Number or function.
+  //           wipe uses a fraction of the list height, so it scales with the tab:
+  //           0.1 = up by 10% of the list, -0.1 = down by 10%.
+  const HAND = {
+    // idle sprite wasn't checked, so its tip is copied from tap. Adjust if it's off.
+    idle: { src: "assets/zhiynl-hand-idle.png", size: 280, ratio: 1,     tip: { x: 0.52, y: 0.69 }, lift: 0 },
+    tap:  { src: "assets/zhiynl-hand-tap.png",  size: 280, ratio: 1,     tip: { x: 0.52, y: 0.69 }, lift: 0 },
+    wipe: { src: "assets/zhiynl-hand-wipe.png", size: 900, ratio: 0.667, tip: { x: 0.47, y: 0.80 }, lift: () => listHeight() * 0.0 },  // comically large
+  };
+
+  const TAMPERED = sessionStorage.getItem("completedTamper") === "true";
+  const LINES = [
+    "Ay",
+    "SEEMS LIKE YO BITCHASS ACCUMULATED ENOUGH MONEY TO TAKE 3 PEOPLE STRAIGHT OUTTA MY VAULT",
+    "SEEING HOW YOU BEEN GETTING RICH",
+    "I DECIDED TO CAPITALIZE ON THAT"
+  ];
+  if (TAMPERED) LINES.push("ALSO DIS GOT NOTHIN TO DO WITH U SHOPLIFTING I DONT HOLD GRUDGES LIKE THAT AY");
+  const OUTRO = "HERE YOU GO SON";
+
+  /* ---------- Helpers ---------- */
+  const $ = (id) => document.getElementById(id);
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  const playOneShot = (src) => new Audio(src).play().catch(() => {});
+
+  const dialogue = $("zhiynl-dialogue");
+  const sprite   = $("zhiynl-sprite");
+  const hand     = $("hand");
+  const handImg  = $("hand-img");
+  const veil     = $("veil");
+
+  function say(text, hold = 900) {
+    return new Promise((resolve) => {
+      let i = 0;
+      dialogue.textContent = "";
+      const t = setInterval(() => {
+        dialogue.textContent += text[i++] ?? "";
+        if (i >= text.length) { clearInterval(t); setTimeout(resolve, hold); }
+      }, 25);
+    });
+  }
+
+  /* ---------- Hand ----------
+     The hand is position:fixed (viewport coords), so we NEVER store pixel
+     positions. Instead the hand follows a function that re-reads the live
+     element rects every frame. Scroll, zoom, resize = it just stays glued
+     to the right spot. */
+  const listHeight = () => document.querySelector("#tab-characters ul").getBoundingClientRect().height;
+  let curHand = HAND.idle;
+
+  function setHand(key) {
+    const h = HAND[key];
+    curHand = h;
+    hand.style.height = h.size + "px";
+    hand.style.width  = h.size * h.ratio + "px";
+    // If a file is missing/broken, fall back to idle so the hand never vanishes.
+    handImg.onerror = () => { handImg.onerror = null; handImg.src = HAND.idle.src; };
+    handImg.src = h.src;
+  }
+  setHand("idle");
+
+  // Anchors: functions returning viewport coords, evaluated live.
+  const spriteAnchor = () => {
+    const s = sprite.getBoundingClientRect();
+    return { x: s.left + s.width * 0.8, y: s.top + s.height * 0.6 };
+  };
+  const tabAnchor = (name) => () => {
+    const t = document.querySelector(`.tab-btn[data-tab="${name}"]`).getBoundingClientRect();
+    return { x: t.left + t.width / 2, y: t.top + t.height / 2 };
+  };
+  const STROKES = 4, PAD = 12;
+  const listAnchor = (side, row) => () => {
+    const r = document.querySelector("#tab-characters ul").getBoundingClientRect();
+    return {
+      x: side === "L" ? r.left + PAD : r.right - PAD,
+      y: r.top + (r.height * (row + 0.5)) / STROKES,
+    };
+  };
+
+  let current = spriteAnchor;   // what the hand is currently following
+
+  // One render loop, runs for the whole cutscene.
+  (function frame() {
+    const p = current();
+    const h = curHand, w = h.size * h.ratio;
+    hand.style.transform =
+      `translate(${p.x - h.tip.x * w}px, ${p.y - h.tip.y * h.size - (typeof h.lift === "function" ? h.lift() : h.lift)}px)`;
+    requestAnimationFrame(frame);
+  })();
+
+  // Glide from wherever the hand is now to a (live) target.
+  function moveHand(to, ms = 600) {
+    const from = current;
+    const t0 = performance.now();
+    return new Promise((resolve) => {
+      current = () => {
+        const k = Math.min(1, (performance.now() - t0) / ms);
+        if (k >= 1) { current = to; resolve(); return to(); }
+        const e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2; // ease-in-out
+        const a = from(), b = to();
+        return { x: a.x + (b.x - a.x) * e, y: a.y + (b.y - a.y) * e };
+      };
+    });
+  }
+
+  function showTab(name) {
+    document.querySelectorAll(".tab-btn")
+      .forEach((b) => b.classList.toggle("active", b.dataset.tab === name));
+    document.querySelectorAll(".shop-section")
+      .forEach((s) => s.classList.toggle("active", s.id === "tab-" + name));
+  }
+
+  function markOwnedVisuals() {
+    const owned = JSON.parse(localStorage.getItem("unlockedCharacters") || "[]");
+    document.querySelectorAll('#tab-characters .buy-item').forEach((b) => {
+      if (owned.includes(b.dataset.id)) {
+        b.disabled = true;
+        b.textContent = `${b.dataset.id} - ✅ Unlocked`;
+        b.style.opacity = "0.5";
+      }
+    });
+  }
+
+  function showNewPrices() {
+    document.querySelectorAll("#tab-characters .buy-item:not(:disabled)").forEach((b) => {
+      b.dataset.cost = NEW_PRICE;
+      b.textContent = `${b.dataset.id} - ${NEW_PRICE} coins`;
+      b.classList.add("price-pop");
+    });
+  }
+
+  /* ---------- Cutscene ---------- */
+  async function run() {
+    // lock everything (blocks mouse AND keyboard)
+    $("shop-container").inert = true;
+    $("shop-notebook").style.display = "block";
+    showTab("items");
+    markOwnedVisuals();
+
+    // fade in from the black the shop faded out to
+    requestAnimationFrame(() => { veil.style.opacity = "0"; });
+    await sleep(1000);
+
+    for (const line of LINES) await say(line);
+
+    // hand emerges from Zhiynl
+    current = spriteAnchor;
+    setHand("idle");
+    hand.style.opacity = "1";
+    await sleep(300);
+
+    // 1) tap the Characters tab
+    setHand("tap");   // use the tap sprite for the whole trip so its fingertip lands on the button
+    await moveHand(tabAnchor("characters"), 900);
+    handImg.classList.add("tap");
+    playOneShot("assets/shopbuttonclick.mp3");
+    await sleep(110);
+    showTab("characters");
+    await sleep(400);
+    handImg.classList.remove("tap");
+
+    // 2) wipe across the whole list (giant hand)
+    setHand("wipe");
+    await moveHand(listAnchor("L", 0), 600);
+    for (let i = 0; i < STROKES; i++) {
+      const side = i % 2 === 0 ? "R" : "L";
+      await moveHand(listAnchor(side, Math.min(i + 1, STROKES - 1)), 450);
+    }
+
+    showNewPrices();
+    playOneShot("assets/chaching.mp3");
+    setHand("idle");
+    await sleep(500);
+
+    hand.style.opacity = "0";
+    await moveHand(spriteAnchor, 700);
+
+    await say(OUTRO, 1400);
+
+    if (!TEST) {
+      localStorage.setItem("priceNoticeSeen", "true");
+      sessionStorage.setItem("fromPriceNotice", "true");
+      sessionStorage.setItem("completedPriceNotice", "true");
+    }
+    veil.style.transition = "opacity 1200ms ease";
+    veil.style.opacity = "1";
+    await sleep(1300);
+    location.href = "shop.html";
+  }
+
+  window.addEventListener("load", () => {
+    run().catch((err) => {
+      console.error("Cutscene crashed:", err);
+      veil.style.opacity = "0";
+      $("shop-container").inert = false;
+    });
+  });
+  </script>
+</body>
+</html>

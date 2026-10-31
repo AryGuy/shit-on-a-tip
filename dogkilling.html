@@ -1,0 +1,1846 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>BACKYARD DOG FIGHTIN 1000</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+  html,body{margin:0;height:100%;background:#000;color:#fff;font-family:'Press Start 2P',monospace;overflow:hidden}
+  #wrap{position:relative;height:100%;display:flex;align-items:center;justify-content:center}
+  canvas{width:min(100vw,calc(100vh*1.6));image-rendering:pixelated;cursor:crosshair}
+  .ui{position:absolute;left:0;right:0;text-align:center;pointer-events:none;text-shadow:2px 2px #000}
+  #top{top:12px;font-size:10px;color:#ffbe4d}
+  #hp{bottom:12px;font-size:12px;color:#e33}
+  #msg{top:42%;font-size:14px;line-height:2em}
+  #say{top:20%;font-size:10px;line-height:1.8em;color:#ffe27a;padding:0 8%;box-sizing:border-box}
+  #hurt{position:absolute;inset:0;background:radial-gradient(ellipse at center,rgba(200,0,0,0) 35%,rgba(200,0,0,.55) 70%,rgba(140,0,0,.95) 100%);opacity:0;pointer-events:none;transition:opacity .3s}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="c" width="640" height="400"></canvas>
+  <div id="hurt"></div>
+  <div class="ui" id="top"></div>
+  <div class="ui" id="msg"></div>
+  <div class="ui" id="say"></div>
+  <div class="ui" id="hp"></div>
+</div>
+
+<script>
+/* ---------- Gate: needs Golden Ticket + Pre-Individuals + Kai. Add ?dev to skip. ---------- */
+(function () {
+  if (new URLSearchParams(location.search).has("dev")) return;
+  let ach = {};
+  try { ach = JSON.parse(localStorage.getItem("achievements") || "{}"); } catch (e) {}
+  const ok = localStorage.getItem("goldenTicketBought") === "true" && ach.preIndividuals &&
+             sessionStorage.getItem("playerCharacter") === "Kai";
+  if (!ok) location.replace("shop.html");
+})();
+
+/* ---------- Config ---------- */
+const RETURN_TO = "shop.html";
+const DEATH_TO = "shop.html";
+
+const MAP_ROWS = [
+"####################",
+"#P.....#..d....d...#",
+"#......#....d......#",
+"#...d..#....##..d..#",
+"#......#....##..d..#",
+"###.####....d......#",
+"#....d........d....#",
+"#...d......%%%...d.#",
+"#..........%.%..d..#",
+"####.#######.%######",
+"#......#....d......#",
+"#..d...#.....d.....#",
+"#......#..d.....d..#",
+"#...d.......#..d...#",
+"#..d........#.....K#",
+"####################"
+];
+
+const DOG_HP = 3;
+const DOG_SPEED = 1.7;
+const DOG_BITE = 8;
+const PLAYER_SPEED = 3.2;
+const PUMP_TIME = 0.85;
+
+const MOUSE_SENS = 0.0012;
+const MOUSE_SPIKE = 200;   // ignore single mouse events bigger than this (browser pointer-lock glitches)
+const ARROW_TURN = 1.6;
+
+const BLAST_VOL = 0.35;
+const MUSIC_VOL = 0.35;
+
+const BLAST_TIME = 0.3;
+const SHAKE_PX = 3;
+const BRIGHT = 0.22;
+
+// AUDIO SETTINGS
+const STEP_VOL = 1.0;
+const GROAN_VOL = 0.5;
+const GROAN_CHANCE = 0.4;   // fraction of dogs that groan
+const GROAN_MIN = 4;        // seconds between groans
+const GROAN_MAX = 12;
+const GROAN_RANGE = 12;     // tiles; louder when closer
+
+// FACE HUD SETTINGS
+const FACE_W = 130;          // panel width in canvas pixels
+const FACE_MARGIN = 8;
+const FACE_FIRE_TIME = 0.5;  // seconds the orange "firing" face shows
+const FACE_HURT_TIME = 0.6;  // seconds the "hurt" face shows (overrides firing)
+const HURT_VOL = 0.8;
+const VIGNETTE_TIME = 150;   // ms the red vignette stays at full before fading
+
+// KILL / SPAWN SETTINGS
+const CLOSE_RANGE = 1;          // point blank: kills closer than this (in tiles) explode
+const DEAD_SHOW_TIME = 1.0;     // seconds the deaddog sprite shows before the puddle (mid/far kills)
+const KNOCKBACK_SPEED = 4;      // tiles/sec at the moment of death, slows to 0 over DEAD_SHOW_TIME
+const DEAD_SCALE = 0.85;
+const EXPLODE_SCALE = 1.1;
+const EXPLODE_SPEED_MIN = 2;    // explode.gif playback speed, randomized per kill
+const EXPLODE_SPEED_MAX = 3;
+const HEAL_MIN = 10;            // hp restored by a close-range kill, randomized
+const HEAL_MAX = 20;
+const MAX_HP = 100;
+const FACE_CRAZED_TIME = 1.2;
+const WAVES = [15, 30, 45, 60]; // dogs per wave; clear the last wave to bring in Kai
+const WAVE_BREAK_TIME = 3;      // seconds between waves
+const EXPLOSION_VOL = 0.8;
+const SPAWN_MIN_PLAYER = 5;     // dogs never spawn closer than this to the player
+const SPAWN_MIN_DOG = 2;        // ...or to each other
+
+// ATTACK / SURVIVAL SETTINGS
+const ATTACK_RANGE = 0.9;       // a dog starts winding up inside this distance
+const HIT_RANGE = 1.2;          // the punch only lands if you're still inside this when it swings
+const WINDUP_TIME = 0.45;       // seconds (randomized +-20% per dog so crowds don't swing in sync)
+const PUNCH_TIME = 0.3;
+const ATTACK_COOLDOWN = 0.9;    // pause after a punch before the dog can wind up again
+const SAVE_COOLDOWN = 10;       // seconds before the fatal-hit save is available again
+const SAVE_IFRAMES = 1.5;       // brief invulnerability right after a save (so a crowd can't finish you instantly)
+const BLOODIED_HP = 25;         // bloodied face shows at or below this hp
+const SPRINT_MULT = 1.6;
+
+// COMMENTARY SETTINGS
+const MULTIKILL_COMMENT = 5;    // kills in a single shot that trigger Zhiynl's commentary
+const SAY_LINES = [
+  "IS THAT IT YOU STUPID FUCKING DOG",
+  "DAWG MY GRANDMA HIT HARDER THAN THIS WYD GENUINELY",
+  "BITING MORE THAN YOU CAN CHEW HUH AND IM TALKIN THE ONLY THING U BITING HERE IS MY MUZZLE",
+  "WOOOOHOOOOOOOOO",
+  "DOG DOG DOG DOG DGO DUMB DOGODGDOGDBDUMB STUPDI DOG",
+  "DID ANYONE OF YALL FUCKING RETARD CONNOSEUR THINK U FR STOOD A CHANCE",
+  "JUST GIVE ME THE MEDAL ALREADY BRO",
+  "RAAAHAHAHAHAHAHAHAHAHAH",
+  "DADDY IS HERE TO PUT U IN UR PLACE DW..."
+];
+
+// DOG TRASH TALK SETTINGS (one dog talks at a time)
+const DOG_TALK_RANGE = 10;      // tiles; a dog must be this close, on screen and in line of sight to talk
+const DOG_TALK_CD_MIN = 1.6;    // seconds of silence after a bubble ends
+const DOG_TALK_CD_MAX = 3.4;
+const DOG_TALK_FIRST = 1.5;     // delay before the first taunt of a run
+const DOG_TAUNTS = [
+  "Nah nah I'm actually having fun rn",
+  "Bet",
+  "You're trash kid",
+  "Come",
+  "LOLLLL",
+  "COME 1V1 ME",
+  "is that all you got",
+  "yeah ur so cooked dude omg",
+  "u so mid",
+  "who u callign dog?",
+  "point that shotgun to ur head lol",
+  "im better than u",
+  "stupid idiot"
+];
+
+// AMMO / PUNCH SETTINGS
+const MAX_AMMO = 6;
+const RELOAD_TIME = 1.6;        // seconds for the full reload animation
+const PUNCH_ANIM = 0.42;        // seconds for the whole punch (out and back)
+const PUNCH_IMPACT_P = 0.22;    // fraction of the animation where the fist connects
+const PUNCH_RANGE = 1.6;        // tiles
+const PUNCH_AMMO = 1;           // ammo gained when a punch lands
+const PUNCH_MISS_SHAKE = 2;     // px, subtle
+const PUNCH_HIT_SHAKE = 14;     // px, very feelable
+const PUNCH_VOL = 0.8;
+const RELOAD_VOL = 0.8;
+
+// COMFORT SETTINGS (motion sickness)
+const SCREEN_SHAKE = true;    // shotgun / punch screen shake + zoom
+const GUN_BOB = true;         // gun sway while walking
+
+// FLOOR SETTINGS
+const FLOOR_TEX = "assets/concretetexture.png";
+const FLOOR_TILES = 2;        // map tiles per texture repeat
+const FLOOR_BRIGHT = 0.85;
+const FLOOR_TEX_SIZE = 128;   // texture is sampled at this resolution
+const FLOOR_FADE_START = 3;   // tiles away where the floor starts fading to its average color
+const FLOOR_FADE_LEN = 5;     // ...and is fully flat this much farther (kills shimmer when turning)
+
+// MINIMAP SETTINGS
+const MM_TILE = 4;        // pixels per map tile
+const MM_MARGIN = 6;
+const MM_DOT = 1.7;       // circle radius in pixels
+const MM_ALPHA = 0.5;     // overall opacity
+const MM_RANGE = 10;      // dogs only show up on the map within this many tiles
+let mmOn = true;          // press M to toggle
+
+// BLOOD SETTINGS
+const BLOOD_FADE_DELAY = 5;
+const BLOOD_FADE_TIME = 4;
+
+/* ---------- Setup ---------- */
+const cv = document.getElementById("c");
+const ctx = cv.getContext("2d");
+
+const W = cv.width;
+const H = cv.height;
+
+const $ = (id) => document.getElementById(id);
+const grid = MAP_ROWS.map((r) => [...r]);
+
+let px, py, dx, dy, plx, ply;
+let hp, dogs, kai, state, pump, blast, bob;
+let zbuf = new Array(W);
+let lastStep = -1;
+let wave = 0, breakT = -1, msgT = 0;
+let saveCd = 0, iframeT = 0;
+let sayT = 0, lastSay = -1;
+let dogTalk = null, dogTalkCd = 2;
+let ammo = 6, reloadT = 0, punchT = 0, punchResolved = true, ammoGainT = 0;
+let shakeT = 0, shakeDur = 1, shakeAmp = 0;
+
+function say(text) {
+  $("say").textContent = "ZHIYNL: " + text;
+  sayT = 2.5 + text.length * 0.035;
+}
+
+function sprite(emoji) {
+  const s = document.createElement("canvas");
+  s.width = s.height = 128;
+
+  const g = s.getContext("2d");
+  g.font = "100px serif";
+  g.textAlign = "center";
+  g.textBaseline = "middle";
+  g.fillText(emoji, 64, 70);
+
+  return s;
+}
+
+const SPR = {
+  dog: sprite("🐕"),
+  blood: sprite("🩸"),
+  kai: Object.assign(document.createElement("canvas"), { width: 128, height: 128 })
+};
+
+/* ---------- Dog sprites (2 variants, pre-rendered waddle frames) ---------- */
+const DOG_FILES = ["assets/dog.png", "assets/dog2.png"];
+const DOG_FRAMES = 8;     // frames in one full walk cycle
+const DOG_SCALE = 0.85;   // sprite height relative to wall height
+const WALK_SPEED = 9;     // walk-cycle speed (radians/sec) while moving
+const TAU = Math.PI * 2;
+const dogFrames = [[], []];
+
+DOG_FILES.forEach((src, v) => {
+  const im = new Image();
+  im.onload = () => {
+    for (let f = 0; f < DOG_FRAMES; f++) {
+      const ph = (f / DOG_FRAMES) * TAU;
+      const c = document.createElement("canvas");
+      c.width = c.height = 128;
+      const g = c.getContext("2d");
+      const h = 116;
+      const w = h * im.naturalWidth / im.naturalHeight;
+
+      g.translate(64, 126);                                  // pivot at the feet
+      g.transform(1, 0, Math.sin(ph) * 0.06, 1, 0, 0);       // lean side to side
+      g.rotate(Math.sin(ph) * 0.05);                         // waddle tilt
+      g.scale(1, 1 - Math.abs(Math.sin(ph)) * 0.04);         // dip with each step
+      g.drawImage(im, -w / 2, -h, w, h);
+
+      dogFrames[v].push(c);
+    }
+  };
+  im.onerror = () => console.warn(src + " not found");
+  im.src = src;
+});
+
+function dogImg(d) {
+  if (d.atk) {
+    const a = (d.atk === 1 ? windupSprites : punchSprites)[d.variant];
+    if (a) return a;
+  }
+  const fr = dogFrames[d.variant];
+  if (!fr.length) return SPR.dog; // emoji fallback until loaded
+  const f = d.moving ? Math.floor(((d.walk % TAU) / TAU) * DOG_FRAMES) : 0;
+  return fr[f];
+}
+
+/* ---------- Minimal GIF decoder (so explode.gif can be played at any speed) ---------- */
+function gifLzw(data, minCode, n) {
+  const out = new Uint8Array(n);
+  const clear = 1 << minCode, eoi = clear + 1;
+  const prefix = new Int16Array(4096), suffix = new Uint8Array(4096), stack = new Uint8Array(4097);
+  for (let i = 0; i < clear; i++) suffix[i] = i;
+  let size = minCode + 1, next = eoi + 1, prev = -1, first = 0;
+  let bits = 0, nb = 0, di = 0, o = 0;
+  while (o < n) {
+    while (nb < size) {
+      if (di >= data.length) return out;
+      bits |= data[di++] << nb;
+      nb += 8;
+    }
+    const code = bits & ((1 << size) - 1);
+    bits >>>= size;
+    nb -= size;
+    if (code === clear) { size = minCode + 1; next = eoi + 1; prev = -1; continue; }
+    if (code === eoi) break;
+    if (prev === -1) { out[o++] = suffix[code]; prev = code; first = suffix[code]; continue; }
+    let c = code, sp = 0;
+    if (code >= next) { stack[sp++] = first; c = prev; }
+    while (c >= clear) { stack[sp++] = suffix[c]; c = prefix[c]; }
+    first = suffix[c];
+    stack[sp++] = first;
+    if (next < 4096) {
+      prefix[next] = prev;
+      suffix[next] = first;
+      next++;
+      if (next === (1 << size) && size < 12) size++;
+    }
+    while (sp > 0 && o < n) out[o++] = stack[--sp];
+    prev = code;
+  }
+  return out;
+}
+
+// returns { width, height, frames: [{ rgba, delay(ms) }] } with every frame fully composited
+function decodeGif(buf) {
+  const b = new Uint8Array(buf);
+  if (String.fromCharCode(b[0], b[1], b[2]) !== "GIF") throw new Error("not a gif");
+  let p = 6;
+  const u16 = () => { const v = b[p] | (b[p + 1] << 8); p += 2; return v; };
+  const W = u16(), H = u16();
+  const flags = b[p++]; p += 2;
+  let gct = null;
+  if (flags & 0x80) { const n = 2 << (flags & 7); gct = b.subarray(p, p + n * 3); p += n * 3; }
+
+  const full = new Uint8ClampedArray(W * H * 4);
+  const frames = [];
+  let gce = { delay: 10, transp: -1, disposal: 0 };
+  let prev = null;
+
+  while (p < b.length) {
+    const t = b[p++];
+    if (t === 0x3B) break;
+    if (t === 0x21) {
+      const label = b[p++];
+      if (label === 0xF9) {
+        p++;
+        const f = b[p++];
+        const delay = u16();
+        const ti = b[p++];
+        p++;
+        gce = { delay, transp: (f & 1) ? ti : -1, disposal: (f >> 2) & 7 };
+      } else {
+        let sz;
+        while ((sz = b[p++]) !== 0) p += sz;
+      }
+    } else if (t === 0x2C) {
+      const ix = u16(), iy = u16(), iw = u16(), ih = u16();
+      const lf = b[p++];
+      let ct = gct;
+      if (lf & 0x80) { const n = 2 << (lf & 7); ct = b.subarray(p, p + n * 3); p += n * 3; }
+      const minCode = b[p++];
+      const chunks = [];
+      let total = 0, sz;
+      while ((sz = b[p++]) !== 0) { chunks.push(b.subarray(p, p + sz)); p += sz; total += sz; }
+      const data = new Uint8Array(total);
+      let off = 0;
+      chunks.forEach((c) => { data.set(c, off); off += c.length; });
+      const idx = gifLzw(data, minCode, iw * ih);
+
+      if (prev) {
+        if (prev.disp === 2) {
+          for (let y = prev.y; y < Math.min(H, prev.y + prev.h); y++)
+            for (let x = prev.x; x < Math.min(W, prev.x + prev.w); x++)
+              full.fill(0, (y * W + x) * 4, (y * W + x) * 4 + 4);
+        } else if (prev.disp === 3 && prev.saved) {
+          full.set(prev.saved);
+        }
+      }
+      const saved = gce.disposal === 3 ? full.slice() : null;
+
+      let order = null;
+      if (lf & 0x40) {
+        order = [];
+        [[0, 8], [4, 8], [2, 4], [1, 2]].forEach(([s, st]) => { for (let y = s; y < ih; y += st) order.push(y); });
+      }
+      for (let r = 0; r < ih; r++) {
+        const y = iy + (order ? order[r] : r);
+        if (y >= H) continue;
+        for (let x = 0; x < iw; x++) {
+          const ci = idx[r * iw + x];
+          if (ci === gce.transp || ix + x >= W || !ct) continue;
+          const o = (y * W + ix + x) * 4;
+          full[o] = ct[ci * 3];
+          full[o + 1] = ct[ci * 3 + 1];
+          full[o + 2] = ct[ci * 3 + 2];
+          full[o + 3] = 255;
+        }
+      }
+      frames.push({ rgba: full.slice(), delay: (gce.delay < 2 ? 10 : gce.delay) * 10 });
+      prev = { disp: gce.disposal, x: ix, y: iy, w: iw, h: ih, saved };
+      gce = { delay: 10, transp: -1, disposal: 0 };
+    } else {
+      break;
+    }
+  }
+  return { width: W, height: H, frames };
+}
+
+/* ---------- Death sprites + explosion ---------- */
+function fitSprite(im, valign) {
+  const c = document.createElement("canvas");
+  c.width = c.height = 128;
+  const g = c.getContext("2d");
+  const sc = Math.min(124 / im.width, 120 / im.height);
+  const w = im.width * sc, h = im.height * sc;
+  g.drawImage(im, (128 - w) / 2, valign === "center" ? (128 - h) / 2 : 126 - h, w, h);
+  return c;
+}
+
+const deadSprites = [null, null];
+["assets/deaddog.png", "assets/deaddog2.png"].forEach((src, v) => {
+  const im = new Image();
+  im.onload = () => { deadSprites[v] = fitSprite(im, "bottom"); };
+  im.onerror = () => console.warn(src + " not found");
+  im.src = src;
+});
+
+const explode = { frames: [], total: 0 }; // frames: { c: canvas, end: cumulative ms }
+
+function setExplodeFrames(list) {
+  let t = 0;
+  explode.frames = list.map((f) => { t += f.delay; return { c: f.c, end: t }; });
+  explode.total = t;
+}
+
+fetch("assets/explode.gif")
+  .then((r) => { if (!r.ok) throw new Error("HTTP " + r.status); return r.arrayBuffer(); })
+  .then((buf) => {
+    const gif = decodeGif(buf);
+    const full = document.createElement("canvas");
+    full.width = gif.width;
+    full.height = gif.height;
+    const fg = full.getContext("2d");
+    setExplodeFrames(gif.frames.map((f) => {
+      fg.clearRect(0, 0, full.width, full.height);
+      fg.putImageData(new ImageData(f.rgba, gif.width, gif.height), 0, 0);
+      return { c: fitSprite(full, "center"), delay: f.delay };
+    }));
+  })
+  .catch((err) => {
+    // e.g. opened from file:// where fetch is blocked: show the first frame only
+    console.warn("explode.gif could not be decoded (" + err.message + "). Run via a local server for the full animation.");
+    const im = new Image();
+    im.onload = () => setExplodeFrames([{ c: fitSprite(im, "center"), delay: 400 }]);
+    im.src = "assets/explode.gif";
+  });
+
+function explodeFrame(d) {
+  const ms = d.animT * d.expSpeed * 1000;
+  const f = explode.frames.find((fr) => fr.end > ms) || explode.frames[explode.frames.length - 1];
+  return f.c;
+}
+
+// what a dead dog looks like right now: [image, scale, alpha]
+function deadLook(d) {
+  if (d.animT < d.animDur) {
+    if (d.deathType === "explode" && explode.frames.length) return [explodeFrame(d), EXPLODE_SCALE, 1];
+    if (deadSprites[d.variant]) return [deadSprites[d.variant], DEAD_SCALE, 1];
+    return [SPR.blood, 0.6, 1];
+  }
+  const a = Math.max(0, 1 - Math.max(0, d.bloodAge - BLOOD_FADE_DELAY) / BLOOD_FADE_TIME);
+  return [SPR.blood, 0.6, a];
+}
+
+/* ---------- Windup / punch sprites ---------- */
+const windupSprites = [null, null];
+const punchSprites = [null, null];
+
+function loadImg(src) {
+  return new Promise((res) => {
+    const im = new Image();
+    im.onload = () => res(im);
+    im.onerror = () => { console.warn(src + " not found"); res(null); };
+    im.src = src;
+  });
+}
+
+[
+  ["assets/dog.png", "assets/dogwindup.png", "assets/dogpunch.png"],
+  ["assets/dog2.png", "assets/dog2windup.png", "assets/dog2punch.png"]
+].forEach(([b, w, p], v) => {
+  Promise.all([loadImg(b), loadImg(w), loadImg(p)]).then(([base, wi, pi]) => {
+    if (!base) return;
+    // same scale as the walking sprite so the dog doesn't change size mid-attack
+    const build = (im) => {
+      if (!im) return null;
+      const c = document.createElement("canvas");
+      c.width = c.height = 128;
+      const sc = Math.min(116 / base.naturalHeight, 124 / im.naturalWidth, 126 / im.naturalHeight);
+      const iw = im.naturalWidth * sc, ih = im.naturalHeight * sc;
+      c.getContext("2d").drawImage(im, 64 - iw / 2, 126 - ih, iw, ih);
+      return c;
+    };
+    windupSprites[v] = build(wi);
+    punchSprites[v] = build(pi);
+  });
+});
+
+const kaiImg = new Image();
+
+kaiImg.onload = () => {
+  const g = SPR.kai.getContext("2d");
+  g.clearRect(0, 0, 128, 128);
+  const r = Math.min(128 / kaiImg.width, 128 / kaiImg.height);
+  const w = kaiImg.width * r, h = kaiImg.height * r;
+  g.drawImage(kaiImg, (128 - w) / 2, 128 - h, w, h);
+};
+
+kaiImg.src = "assets/kaibackyard.png";
+
+/* ---------- Live Zhiynl Reaction HUD ---------- */
+const faceTpl = new Image();
+faceTpl.src = "assets/livereaction.png";
+const faceNormal = new Image();
+faceNormal.src = "assets/zhiynlnormal.png";
+const faceFiring = new Image();
+faceFiring.src = "assets/zhiynlfiring.png";
+const faceBloodied = new Image();
+faceBloodied.src = "assets/bloodiedzhiynl.png";
+const faceCrazed = new Image();
+faceCrazed.src = "assets/crazedzhiynl.png";
+const faceCrazedShoot = new Image();
+faceCrazedShoot.src = "assets/crazedzhiynlshooting.png";
+let crazedT = 0;
+let crazedShoot = false;   // true = shotgun kill face, false = punch kill face
+let healT = 0;
+let healAmt = 0;
+const faceHurt = new Image();
+faceHurt.src = "assets/zhiynlhurt.png";
+let faceT = 0;
+let hurtT = 0;
+
+// the black box inside the template, as fractions of the image
+const FACE_BOX = { x: 15 / 960, y: 163 / 720, w: 928 / 960, h: 527 / 720 };
+
+function drawFace() {
+  if (!faceTpl.complete || !faceTpl.naturalWidth) return;
+
+  const pw = FACE_W;
+  const ph = pw * faceTpl.naturalHeight / faceTpl.naturalWidth;
+  const x = FACE_MARGIN;
+  const y = H - ph - FACE_MARGIN;
+
+  ctx.drawImage(faceTpl, x, y, pw, ph);
+
+  const face = hurtT > 0 ? faceHurt : crazedT > 0 ? (crazedShoot ? faceCrazedShoot : faceCrazed) : faceT > 0 ? faceFiring : hp <= BLOODIED_HP ? faceBloodied : faceNormal;
+  if (!face.complete || !face.naturalWidth) return;
+
+  const bx = x + FACE_BOX.x * pw;
+  const by = y + FACE_BOX.y * ph;
+  const bw = FACE_BOX.w * pw;
+  const bh = FACE_BOX.h * ph;
+
+  const sc = Math.min(bw / face.naturalWidth, bh / face.naturalHeight);
+  const fw = face.naturalWidth * sc;
+  const fh = face.naturalHeight * sc;
+
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(bx, by, bw, bh);
+  ctx.clip();
+  ctx.drawImage(face, bx + (bw - fw) / 2, by + bh - fh, fw, fh);
+  ctx.restore();
+}
+
+const gunImg = new Image();
+gunImg.src = "assets/fpsshotgun.png";
+
+const blastImg = new Image();
+blastImg.src = "assets/shotgunblast.png";
+
+const reloadImg = new Image();
+reloadImg.src = "assets/shotgunreload.png";
+
+const punchImg = new Image();
+punchImg.src = "assets/punch.png";
+
+const puddleImg = new Image();
+
+puddleImg.onload = () => {
+  const iw = puddleImg.naturalWidth;
+  const ih = puddleImg.naturalHeight;
+
+  let x0 = 0, y0 = 0, bw = iw, bh = ih;
+
+  try {
+    const t = document.createElement("canvas");
+    t.width = iw;
+    t.height = ih;
+
+    const tg = t.getContext("2d");
+    tg.drawImage(puddleImg, 0, 0);
+
+    const d = tg.getImageData(0, 0, iw, ih).data;
+
+    let x1 = 0, y1 = 0;
+    x0 = iw;
+    y0 = ih;
+
+    for (let y = 0; y < ih; y++) {
+      for (let x = 0; x < iw; x++) {
+        if (d[(y * iw + x) * 4 + 3] > 10) {
+          if (x < x0) x0 = x;
+          if (x > x1) x1 = x;
+          if (y < y0) y0 = y;
+          if (y > y1) y1 = y;
+        }
+      }
+    }
+
+    bw = x1 - x0 + 1;
+    bh = y1 - y0 + 1;
+
+  } catch (e) {
+    x0 = 0;
+    y0 = 0;
+    bw = iw;
+    bh = ih;
+  }
+
+  const h = 128 * bh / bw;
+
+  const g = SPR.blood.getContext("2d");
+  g.clearRect(0, 0, 128, 128);
+
+  g.drawImage(
+    puddleImg,
+    x0, y0, bw, bh,
+    0, 128 - h, 128, h
+  );
+};
+
+puddleImg.onerror = () => {
+  console.warn("bloodpuddle.png not found at assets/bloodpuddle.png");
+};
+
+puddleImg.src = "assets/bloodpuddle.png";
+
+/* ---------- Random dog spawns ---------- */
+function makeDog(x, y) {
+  return {
+    x, y,
+    hp: DOG_HP,
+    bite: 0,
+    variant: Math.random() < 0.5 ? 0 : 1,
+    walk: Math.random() * TAU,
+    moving: false,
+    atk: 0,      // 0 = none, 1 = windup, 2 = punch
+    atkT: 0,
+    groaner: Math.random() < GROAN_CHANCE,
+    groanT: GROAN_MIN + Math.random() * (GROAN_MAX - GROAN_MIN),
+    alive: true,
+    bloodAge: 0,
+    animT: 0,
+    animDur: 0,
+    deathType: null,
+    kbx: 0,
+    kby: 0,
+    expSpeed: 1
+  };
+}
+
+// The 'd' marks in MAP_ROWS now only set how many dogs spawn.
+// They are placed on random open tiles reachable from the player's start.
+function spawnDogs(n) {
+  const sx = Math.floor(px), sy = Math.floor(py);
+  const seen = new Set([sx + "," + sy]);
+  const queue = [[sx, sy]];
+  const tiles = [];
+
+  while (queue.length) {
+    const [x, y] = queue.shift();
+    tiles.push([x, y]);
+    [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([ox, oy]) => {
+      const nx = x + ox, ny = y + oy, c = grid[ny]?.[nx];
+      if (c === undefined || c === "#" || c === "%" || seen.has(nx + "," + ny)) return;
+      seen.add(nx + "," + ny);
+      queue.push([nx, ny]);
+    });
+  }
+
+  const placed = [];
+
+  for (let i = 0; i < n; i++) {
+    let spot = null;
+
+    for (let attempt = 0; attempt < 300 && !spot; attempt++) {
+      const [tx, ty] = tiles[Math.floor(Math.random() * tiles.length)];
+      const x = tx + 0.5 + (Math.random() - 0.5) * 0.4;
+      const y = ty + 0.5 + (Math.random() - 0.5) * 0.4;
+      const k = attempt > 150 ? 0.5 : 1; // relax the spacing rules if the map is crowded
+
+      if (Math.hypot(x - px, y - py) < SPAWN_MIN_PLAYER * k) continue;
+      if (kai && Math.hypot(x - kai.x, y - kai.y) < 2) continue;
+      if (placed.some((o) => Math.hypot(o.x - x, o.y - y) < SPAWN_MIN_DOG * k)) continue;
+
+      spot = { x, y };
+    }
+
+    if (!spot) {
+      const [tx, ty] = tiles[Math.floor(Math.random() * tiles.length)];
+      spot = { x: tx + 0.5, y: ty + 0.5 };
+    }
+
+    placed.push(spot);
+    dogs.push(makeDog(spot.x, spot.y));
+  }
+}
+
+/* ---------- Waves ---------- */
+function showMsg(text, secs) {
+  $("msg").textContent = text;
+  msgT = secs;
+}
+
+function startWave(n) {
+  wave = n;
+  breakT = -1;
+  // drop corpses/puddles that have fully faded
+  dogs = dogs.filter((d) =>
+    d.alive || d.animT < d.animDur || d.bloodAge < BLOOD_FADE_DELAY + BLOOD_FADE_TIME
+  );
+  spawnDogs(WAVES[n]);
+  showMsg("WAVE " + (n + 1), 2);
+}
+
+/* ---------- Reset ---------- */
+function reset() {
+  dogs = [];
+  kai = null;
+  let dogCount = 0;
+  hp = 100;
+  pump = 0;
+  blast = 0;
+  bob = 0;
+  state = "play";
+
+  grid.forEach((row, y) => {
+    row.forEach((ch, x) => {
+      if (ch === "P") {
+        px = x + 0.5;
+        py = y + 0.5;
+      }
+
+      if (ch === "d") dogCount++;
+
+      if (ch === "K") {
+        kai = {
+          x: x + 0.5,
+          y: y + 0.5,
+          on: false
+        };
+      }
+    });
+  });
+
+  wave = 0;
+  breakT = -1;
+  saveCd = 0;
+  iframeT = 0;
+  dogTalk = null;
+  dogTalkCd = DOG_TALK_FIRST;
+  ammo = MAX_AMMO;
+  reloadT = 0;
+  punchT = 0;
+  punchResolved = true;
+  ammoGainT = 0;
+  shakeT = 0;
+  spawnDogs(WAVES[0]);
+  showMsg("WAVE 1", 2);
+
+  dx = 1;
+  dy = 0;
+  plx = 0;
+  ply = 0.66;
+}
+
+const solid = (x, y) => {
+  const c = grid[Math.floor(y)]?.[Math.floor(x)];
+  return c === "#" || c === "%";
+};
+
+/* ---------- Audio ---------- */
+const blastSfx = new Audio("assets/shotgunblast.mp3");
+const bgm = new Audio("assets/caravan.mp3");
+
+bgm.loop = true;
+bgm.volume = MUSIC_VOL;
+bgm.addEventListener("loadedmetadata", () => {
+  const t = parseFloat(sessionStorage.getItem("caravanResume"));
+  if (!isNaN(t) && bgm.duration) bgm.currentTime = t % bgm.duration;
+  sessionStorage.removeItem("caravanResume");
+}, { once: true });
+
+function startMusic() {
+  if (bgm.paused) bgm.play().catch(() => {});
+}
+
+startMusic();
+
+const stepSfx = new Audio("assets/onestep.mp3");
+const groanSfx = new Audio("assets/doggroan.mp3");
+
+function stepSound() {
+  const a = stepSfx.cloneNode();
+  a.volume = STEP_VOL;
+  a.playbackRate = 0.92 + Math.random() * 0.16;
+  a.play().catch(() => {});
+}
+
+function groan(dist) {
+  const v = GROAN_VOL * Math.max(0, 1 - dist / GROAN_RANGE);
+  if (v <= 0.01) return;
+  const a = groanSfx.cloneNode();
+  a.volume = v;
+  a.playbackRate = 0.9 + Math.random() * 0.2;
+  a.play().catch(() => {});
+}
+
+const hurtSfx = new Audio("assets/hurtbydog.mp3");
+
+const explosionSfx = new Audio("assets/explosion.mp3");
+const punchSfx = new Audio("assets/punchwhip.mp3");
+const reloadSfx = new Audio("assets/shotgunreload.mp3");
+
+function explosionSound() {
+  const a = explosionSfx.cloneNode();
+  a.volume = EXPLOSION_VOL;
+  a.play().catch(() => {});
+}
+
+function damagePlayer(n) {
+  if (iframeT > 0) return;
+
+  hp -= n;
+
+  if (hp <= 0 && saveCd <= 0) {
+    hp = 1;                   // fatal hit survived
+    saveCd = SAVE_COOLDOWN;
+    iframeT = SAVE_IFRAMES;
+  }
+
+  hurtFx();
+}
+
+function hurtFx() {
+  hurtT = FACE_HURT_TIME;
+
+  const a = hurtSfx.cloneNode();
+  a.volume = HURT_VOL;
+  a.play().catch(() => {});
+
+  $("hurt").style.opacity = 1;
+  setTimeout(() => {
+    $("hurt").style.opacity = 0;
+  }, VIGNETTE_TIME);
+}
+
+function boom() {
+  const a = blastSfx.cloneNode();
+  a.volume = BLAST_VOL;
+  a.play().catch(() => {});
+}
+
+/* ---------- Input ---------- */
+const keys = {};
+
+addEventListener("keydown", (e) => {
+  if (e.code === "KeyM") mmOn = !mmOn;
+  keys[e.code] = true;
+  startMusic();
+
+  if (e.code === "Space") { e.preventDefault(); punch(); }
+  if (e.code === "KeyR") reload();
+});
+
+addEventListener("keyup", (e) => {
+  keys[e.code] = false;
+});
+
+cv.addEventListener("click", () => {
+  startMusic();
+  cv.requestPointerLock?.();
+  shoot();
+});
+
+let mouseDX = 0;   // collected between frames, applied once per frame
+
+document.addEventListener("mousemove", (e) => {
+  if (document.pointerLockElement === cv && Math.abs(e.movementX) < MOUSE_SPIKE) {
+    mouseDX += e.movementX;
+  }
+});
+
+function turn(a) {
+  const c = Math.cos(a);
+  const s = Math.sin(a);
+
+  [dx, dy] = [
+    dx * c - dy * s,
+    dx * s + dy * c
+  ];
+
+  [plx, ply] = [
+    plx * c - ply * s,
+    plx * s + ply * c
+  ];
+
+  // stop rounding error from slowly skewing the view
+  const dm = Math.hypot(dx, dy);
+  dx /= dm;
+  dy /= dm;
+  const pm = Math.hypot(plx, ply) / 0.66;
+  plx /= pm;
+  ply /= pm;
+}
+
+/* ---------- Raycasting ---------- */
+function castDist(ax, ay) {
+  let t = 0;
+
+  while (t < 30) {
+    t += 0.05;
+
+    if (solid(px + ax * t, py + ay * t)) {
+      return t;
+    }
+  }
+
+  return 30;
+}
+
+/* ---------- Floor texture ---------- */
+let floorTex = null;
+let floorAvg = [128, 128, 128];
+const floorCv = document.createElement("canvas");
+floorCv.width = W;
+floorCv.height = H / 2;
+const floorCtx = floorCv.getContext("2d");
+const floorData = floorCtx.createImageData(W, H / 2);
+const floor32 = new Uint32Array(floorData.data.buffer);
+
+const floorSrc = new Image();
+floorSrc.onload = () => {
+  try {
+    const S = FLOOR_TEX_SIZE;
+    const c = document.createElement("canvas");
+    c.width = c.height = S;
+    const g = c.getContext("2d");
+    g.drawImage(floorSrc, 0, 0, S, S);
+    floorTex = new Uint32Array(g.getImageData(0, 0, S, S).data.buffer.slice(0));
+
+    let ar = 0, ag = 0, ab = 0;
+    for (let i = 0; i < floorTex.length; i++) {
+      const c = floorTex[i];
+      ar += c & 255;
+      ag += (c >> 8) & 255;
+      ab += (c >> 16) & 255;
+    }
+    floorAvg = [ar / floorTex.length, ag / floorTex.length, ab / floorTex.length];
+  } catch (e) {
+    console.warn("Floor texture unreadable (run via a local server):", e);
+  }
+};
+floorSrc.src = FLOOR_TEX;
+
+function drawFloor() {
+  const half = H / 2;
+
+  if (!floorTex) {
+    ctx.fillStyle = "#2b2420";
+    ctx.fillRect(0, half, W, half);
+    return;
+  }
+
+  const S = FLOOR_TEX_SIZE;
+  const rx0 = dx - plx, ry0 = dy - ply;
+  const sxv = (2 * plx) / W, syv = (2 * ply) / W;
+
+  for (let row = 0; row < half; row++) {
+    const rd = half / (row + 0.5);
+    const lit = Math.min(1, 1.6 / (1 + rd * 0.35)) * FLOOR_BRIGHT;
+    const fade = Math.max(0, Math.min(1, (rd - FLOOR_FADE_START) / FLOOR_FADE_LEN));
+
+    let fx = (px + rd * rx0) / FLOOR_TILES;
+    let fy = (py + rd * ry0) / FLOOR_TILES;
+    const stx = (rd * sxv) / FLOOR_TILES;
+    const sty = (rd * syv) / FLOOR_TILES;
+    const o = row * W;
+
+    for (let x = 0; x < W; x++) {
+      const u = ((fx - Math.floor(fx)) * S) | 0;
+      const v = ((fy - Math.floor(fy)) * S) | 0;
+      const c = floorTex[v * S + u];
+
+      const r0 = c & 255, g0 = (c >> 8) & 255, b0 = (c >> 16) & 255;
+      const r = ((r0 + (floorAvg[0] - r0) * fade) * lit) | 0;
+      const g = ((g0 + (floorAvg[1] - g0) * fade) * lit) | 0;
+      const b = ((b0 + (floorAvg[2] - b0) * fade) * lit) | 0;
+
+      floor32[o + x] = 0xff000000 | (b << 16) | (g << 8) | r;
+      fx += stx;
+      fy += sty;
+    }
+  }
+
+  floorCtx.putImageData(floorData, 0, 0);
+  ctx.drawImage(floorCv, 0, half);
+}
+
+/* ---------- World Rendering ---------- */
+function drawWorld() {
+  ctx.fillStyle = "#1c1014";
+  ctx.fillRect(0, 0, W, H / 2);
+
+  drawFloor();
+
+  for (let x = 0; x < W; x++) {
+    const cam = 2 * x / W - 1;
+    const rx = dx + plx * cam;
+    const ry = dy + ply * cam;
+
+    let mx = Math.floor(px);
+    let my = Math.floor(py);
+
+    const ddx = Math.abs(1 / rx);
+    const ddy = Math.abs(1 / ry);
+
+    const sx = rx < 0 ? -1 : 1;
+    const sy = ry < 0 ? -1 : 1;
+
+    let sdx = (rx < 0 ? px - mx : mx + 1 - px) * ddx;
+    let sdy = (ry < 0 ? py - my : my + 1 - py) * ddy;
+
+    let side = 0;
+    let hit = 0;
+
+    while (!hit) {
+      if (sdx < sdy) {
+        sdx += ddx;
+        mx += sx;
+        side = 0;
+      } else {
+        sdy += ddy;
+        my += sy;
+        side = 1;
+      }
+
+      const c = grid[my]?.[mx];
+
+      if (c === "#" || c === "%" || c === undefined) {
+        hit = c || "#";
+      }
+    }
+
+    const dist = side === 0 ? sdx - ddx : sdy - ddy;
+    zbuf[x] = dist;
+
+    const h = H / dist;
+    const top = (H - h) / 2;
+
+    const wx = (side === 0 ? py + dist * ry : px + dist * rx) % 1;
+
+    const brick = (Math.floor(wx * 8) % 2) ? 0.9 : 1;
+
+    const lit =
+      Math.min(1, 1.6 / (1 + dist * 0.35)) *
+      (side ? 0.75 : 1) *
+      brick;
+
+    const base = hit === "%"
+      ? [90, 70, 130]
+      : [150, 55, 40];
+
+    ctx.fillStyle = `rgb(${base[0] * lit | 0},${base[1] * lit | 0},${base[2] * lit | 0})`;
+    ctx.fillRect(x, top, 1, h);
+  }
+}
+
+/* ---------- Sprite Rendering ---------- */
+function drawSprites() {
+  const list = dogs
+    .filter((d) =>
+      d.alive ||
+      d.animT < d.animDur ||
+      d.bloodAge < BLOOD_FADE_DELAY + BLOOD_FADE_TIME
+    )
+    .map((d) => {
+      if (d.alive) return { ...d, img: dogImg(d), sc: DOG_SCALE, alpha: 1 };
+      const [img, sc, alpha] = deadLook(d);
+      return { ...d, img, sc, alpha };
+    });
+
+  if (kai && kai.on) {
+    list.push({
+      x: kai.x,
+      y: kai.y,
+      img: SPR.kai,
+      sc: 0.9,
+      alpha: 1
+    });
+  }
+
+  list.forEach((s) => {
+    s.d = (s.x - px) ** 2 + (s.y - py) ** 2;
+  });
+
+  list.sort((a, b) => b.d - a.d).forEach((s) => {
+    const rx = s.x - px;
+    const ry = s.y - py;
+
+    const inv = 1 / (plx * dy - dx * ply);
+
+    const tx = inv * (dy * rx - dx * ry);
+    const ty = inv * (-ply * rx + plx * ry);
+
+    if (ty <= 0.2) return;
+
+    const sz = Math.abs(H / ty) * s.sc;
+    const cx = (W / 2) * (1 + tx / ty);
+    const y0 = H / 2 + (H / ty) * 0.5 - sz;
+
+    ctx.globalAlpha = s.alpha ?? 1;
+
+    for (
+      let x = Math.max(0, Math.floor(cx - sz / 2));
+      x < Math.min(W, cx + sz / 2);
+      x++
+    ) {
+      if (ty >= zbuf[x]) continue;
+
+      ctx.drawImage(
+        s.img,
+        ((x - (cx - sz / 2)) / sz) * 128,
+        0, 1, 128,
+        x, y0, 1, sz
+      );
+    }
+
+    ctx.globalAlpha = 1;
+  });
+
+  drawDogBubble();
+}
+
+/* ---------- Shot Animation ---------- */
+const ease = (x) => x * x * (3 - 2 * x);
+
+function shotEnv() {
+  if (blast <= 0) return 0;
+
+  const p = 1 - blast / BLAST_TIME;
+
+  return p < 0.2
+    ? ease(p / 0.2)
+    : 1 - ease((p - 0.2) / 0.8);
+}
+
+function punchExt(p) {
+  if (p < 0.3) {                       // spring out with a little overshoot
+    const x = p / 0.3, c1 = 1.4, c3 = c1 + 1;
+    return 1 + c3 * Math.pow(x - 1, 3) + c1 * Math.pow(x - 1, 2);
+  }
+  if (p < 0.45) return 1;              // hold
+  return 1 - ease((p - 0.45) / 0.55);  // pull back
+}
+
+function drawGun(env) {
+  const b = GUN_BOB ? Math.sin(bob) * 6 : 0;
+  const reloading = reloadT > 0;
+  const rp = reloading ? 1 - reloadT / RELOAD_TIME : 0;
+  const pe = punchT > 0 ? punchExt(1 - punchT / PUNCH_ANIM) : 0;
+
+  const k = pump > 0
+    ? Math.sin((pump / PUMP_TIME) * Math.PI) * 30
+    : 0;
+
+  const img = reloading && reloadImg.complete && reloadImg.naturalWidth ? reloadImg : gunImg;
+
+  if (img.complete && img.naturalWidth) {
+    const gw = 340;
+    const gh = gw * img.naturalHeight / img.naturalWidth;
+
+    const dip = reloading ? Math.sin(rp * Math.PI) * 30 : 0;
+    const gx = W / 2 - gw / 2 + b;
+    const gy = H - gh + 10 + Math.abs(b) + k + dip + Math.min(1, pe) * gh * 0.8;
+
+    ctx.globalAlpha = 1 - env;
+    ctx.drawImage(img, gx, gy, gw, gh);
+  }
+
+  if (env > 0 && blastImg.complete && blastImg.naturalWidth) {
+    const bw = 320;
+    const bh = bw * blastImg.naturalHeight / blastImg.naturalWidth;
+
+    const bx = W / 2 - bw / 2 + b;
+    const by = H - bh + 10 + Math.abs(b) + k * 0.5;
+
+    ctx.globalAlpha = env;
+    ctx.drawImage(blastImg, bx, by, bw, bh);
+  }
+
+  if (punchT > 0 && punchImg.complete && punchImg.naturalWidth) {
+    const sc = 0.75 + 0.35 * Math.min(1, pe);
+    const w = 300 * sc;
+    const h = w * punchImg.naturalHeight / punchImg.naturalWidth;
+    const e = Math.min(1, pe);
+    const x = (W / 2 + 140) + ((W / 2 - w / 2 + 30) - (W / 2 + 140)) * e;
+    const y = H - h * pe * 0.95;
+
+    ctx.globalAlpha = 1;
+    ctx.drawImage(punchImg, x, y, w, h);
+  }
+
+  ctx.globalAlpha = 1;
+
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(W / 2 - 1, H / 2 - 6, 2, 12);
+  ctx.fillRect(W / 2 - 6, H / 2 - 1, 12, 2);
+}
+
+/* ---------- Dog trash talk ---------- */
+const dogLast = new Map();
+
+function dogPool() {
+  return DOG_TAUNTS;
+}
+
+function pickDogLine(pool) {
+  let l;
+  do { l = pool[Math.floor(Math.random() * pool.length)]; }
+  while (l === dogLast.get(pool) && pool.length > 1);
+  dogLast.set(pool, l);
+  return l;
+}
+
+function projectSprite(x, y, sc) {
+  const rx = x - px, ry = y - py;
+  const inv = 1 / (plx * dy - dx * ply);
+  const tx = inv * (dy * rx - dx * ry);
+  const ty = inv * (-ply * rx + plx * ry);
+  if (ty <= 0.2) return null;
+  const sz = Math.abs(H / ty) * sc;
+  return { ty, sz, cx: (W / 2) * (1 + tx / ty), y0: H / 2 + (H / ty) * 0.5 - sz };
+}
+
+function dogVisible(d) {
+  const dist = Math.hypot(d.x - px, d.y - py);
+  if (dist > DOG_TALK_RANGE || dist < 0.5) return false;
+  const p = projectSprite(d.x, d.y, DOG_SCALE);
+  if (!p || p.cx < W * 0.08 || p.cx > W * 0.92) return false;
+  return castDist((d.x - px) / dist, (d.y - py) / dist) >= dist * 0.98;
+}
+
+function updateDogTalk(t) {
+  if (dogTalk) {
+    dogTalk.t -= t;
+    if (dogTalk.t <= 0 || !dogTalk.dog.alive) {
+      dogTalk = null;
+      dogTalkCd = DOG_TALK_CD_MIN + Math.random() * (DOG_TALK_CD_MAX - DOG_TALK_CD_MIN);
+    }
+    return;
+  }
+
+  dogTalkCd -= t;
+  if (dogTalkCd > 0) return;
+
+  const visible = dogs.filter((d) => d.alive && dogVisible(d));
+  if (!visible.length) { dogTalkCd = 0.5; return; }
+
+  const d = visible[Math.floor(Math.random() * visible.length)];
+  const text = pickDogLine(dogPool(d));
+  dogTalk = { dog: d, text, t: 1.6 + text.length * 0.04 };
+}
+
+function drawDogBubble() {
+  if (!dogTalk || state !== "play") return;
+  const d = dogTalk.dog;
+  const p = projectSprite(d.x, d.y, DOG_SCALE);
+  if (!p) return;
+  const col = Math.max(0, Math.min(W - 1, Math.floor(p.cx)));
+  if (p.ty >= zbuf[col]) return;               // hidden behind a wall
+
+  const fs = Math.max(6, Math.min(10, Math.round(p.sz / 14)));
+
+  ctx.save();
+  ctx.font = `${fs}px "Press Start 2P", monospace`;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+  ctx.globalAlpha = Math.min(1, dogTalk.t / 0.25);
+
+  const maxW = fs * 16;
+  const lines = [];
+  let cur = "";
+  dogTalk.text.split(" ").forEach((w) => {
+    const test = cur ? cur + " " + w : w;
+    if (cur && ctx.measureText(test).width > maxW) { lines.push(cur); cur = w; }
+    else cur = test;
+  });
+  lines.push(cur);
+
+  const lh = fs + 3, pad = 4;
+  const bw = Math.ceil(Math.max(...lines.map((l) => ctx.measureText(l).width))) + pad * 2;
+  const bh = lines.length * lh - 3 + pad * 2;
+  const bx = Math.round(Math.max(2, Math.min(W - bw - 2, p.cx - bw / 2)));
+  const by = Math.round(Math.max(2, Math.min(H - bh - 8, p.y0 - bh - 5)));
+
+  const bg = "#fff";
+  const fg = "#111";
+
+  const tx = Math.max(bx + 6, Math.min(bx + bw - 6, Math.round(p.cx)));
+  ctx.fillStyle = bg;
+  ctx.fillRect(bx, by, bw, bh);
+  ctx.beginPath();
+  ctx.moveTo(tx - 3, by + bh);
+  ctx.lineTo(tx + 3, by + bh);
+  ctx.lineTo(tx, by + bh + 5);
+  ctx.fill();
+  ctx.strokeStyle = fg;
+  ctx.lineWidth = 1;
+  ctx.strokeRect(bx + 0.5, by + 0.5, bw - 1, bh - 1);
+
+  ctx.fillStyle = fg;
+  lines.forEach((l, i) => ctx.fillText(l, bx + pad, by + pad + i * lh));
+  ctx.restore();
+}
+
+/* ---------- Gameplay ---------- */
+function multikillSay() {
+  let i;
+  do { i = Math.floor(Math.random() * SAY_LINES.length); } while (i === lastSay && SAY_LINES.length > 1);
+  lastSay = i;
+  say(SAY_LINES[i]);
+}
+
+function addShake(amp, dur) {
+  if (shakeT <= 0 || amp >= shakeAmp * (shakeT / shakeDur)) {
+    shakeAmp = amp;
+    shakeDur = dur;
+    shakeT = dur;
+  }
+}
+
+function reload() {
+  if (state !== "play" || reloadT > 0 || ammo >= MAX_AMMO) return;
+  reloadT = RELOAD_TIME;
+  pump = 0;
+
+  const a = reloadSfx.cloneNode();
+  a.volume = RELOAD_VOL;
+  a.play().catch(() => {});
+}
+
+function punch() {
+  if (state !== "play" || punchT > 0) return;
+  punchT = PUNCH_ANIM;
+  punchResolved = false;
+
+  const a = punchSfx.cloneNode();
+  a.volume = PUNCH_VOL;
+  a.play().catch(() => {});
+}
+
+function resolvePunch() {
+  punchResolved = true;
+  let landed = false;
+  let punched = 0;
+
+  dogs.forEach((d) => {
+    if (!d.alive) return;
+
+    const rx = d.x - px;
+    const ry = d.y - py;
+    const dist = Math.hypot(rx, ry);
+    if (dist > PUNCH_RANGE) return;
+
+    if (dist > 0.05) {
+      const ang = Math.atan2(dx * ry - dy * rx, dx * rx + dy * ry);
+      if (Math.abs(ang) > Math.atan(0.7 / Math.max(dist, 0.4))) return;
+      if (castDist(rx / dist, ry / dist) < dist) return;
+    }
+
+    d.alive = false;
+    d.bloodAge = 0;
+    d.animT = 0;
+    landed = true;
+    punched++;
+
+    if (explode.frames.length) {
+      d.deathType = "explode";
+      d.expSpeed = EXPLODE_SPEED_MIN + Math.random() * (EXPLODE_SPEED_MAX - EXPLODE_SPEED_MIN);
+      d.animDur = explode.total / 1000 / d.expSpeed;
+
+      healAmt = HEAL_MIN + Math.floor(Math.random() * (HEAL_MAX - HEAL_MIN + 1));
+      hp = Math.min(MAX_HP, hp + healAmt);
+      healT = 1.2;
+      crazedT = FACE_CRAZED_TIME;
+      crazedShoot = false;
+      explosionSound();
+    } else {
+      d.deathType = "flash";
+      d.animDur = DEAD_SHOW_TIME;
+      d.kbx = dist > 0.05 ? rx / dist : dx;
+      d.kby = dist > 0.05 ? ry / dist : dy;
+    }
+  });
+
+  if (punched >= MULTIKILL_COMMENT) multikillSay();
+
+  if (landed) {
+    ammo = Math.min(MAX_AMMO, ammo + PUNCH_AMMO);
+    ammoGainT = 1;
+    addShake(PUNCH_HIT_SHAKE, 0.35);
+  } else {
+    addShake(PUNCH_MISS_SHAKE, 0.15);
+  }
+}
+
+function shoot() {
+  if (state !== "play" || pump > 0 || reloadT > 0 || punchT > 0 || ammo <= 0) return;
+
+  ammo--;
+  pump = PUMP_TIME;
+  blast = BLAST_TIME;
+  faceT = FACE_FIRE_TIME;
+
+  boom();
+
+  let kills = 0;
+
+  dogs.forEach((d) => {
+    if (!d.alive) return;
+
+    const rx = d.x - px;
+    const ry = d.y - py;
+    const dist = Math.hypot(rx, ry);
+
+    const ang = Math.atan2(
+      dx * ry - dy * rx,
+      dx * rx + dy * ry
+    );
+
+    if (Math.abs(ang) > Math.atan(0.55 / dist)) return;
+    if (castDist(rx / dist, ry / dist) < dist) return;
+
+    d.hp -= dist < 3 ? 3 : dist < 6 ? 2 : 1;
+    d.hit = 0.15;
+
+    if (d.hp <= 0) {
+      d.alive = false;
+      d.bloodAge = 0;
+      d.animT = 0;
+      kills++;
+
+      if (dist < CLOSE_RANGE && explode.frames.length) {
+        d.deathType = "explode";
+        d.expSpeed = EXPLODE_SPEED_MIN + Math.random() * (EXPLODE_SPEED_MAX - EXPLODE_SPEED_MIN);
+        d.animDur = explode.total / 1000 / d.expSpeed;
+
+        healAmt = HEAL_MIN + Math.floor(Math.random() * (HEAL_MAX - HEAL_MIN + 1));
+        hp = Math.min(MAX_HP, hp + healAmt);
+        healT = 1.2;
+        crazedT = FACE_CRAZED_TIME;
+        crazedShoot = true;
+        explosionSound();
+      } else {
+        d.deathType = "flash";
+        d.animDur = DEAD_SHOW_TIME;
+        d.kbx = rx / dist;   // knocked away from the player
+        d.kby = ry / dist;
+      }
+    }
+  });
+
+  if (kills >= MULTIKILL_COMMENT) multikillSay();
+}
+
+function tryMove(o, mx, my, r = 0.25) {
+  if (!solid(o.x + mx + Math.sign(mx) * r, o.y)) {
+    o.x += mx;
+  }
+
+  if (!solid(o.x, o.y + my + Math.sign(my) * r)) {
+    o.y += my;
+  }
+}
+
+function update(t) {
+  if (state !== "play") return;
+
+  pump = Math.max(0, pump - t);
+  blast = Math.max(0, blast - t);
+  saveCd = Math.max(0, saveCd - t);
+  iframeT = Math.max(0, iframeT - t);
+  ammoGainT = Math.max(0, ammoGainT - t);
+
+  if (reloadT > 0) {
+    reloadT -= t;
+    if (reloadT <= 0) {
+      reloadT = 0;
+      ammo = MAX_AMMO;
+    }
+  }
+
+  if (punchT > 0) {
+    punchT = Math.max(0, punchT - t);
+    if (!punchResolved && (punchT === 0 || 1 - punchT / PUNCH_ANIM >= PUNCH_IMPACT_P)) resolvePunch();
+  }
+
+  const f = (keys.KeyW ? 1 : 0) - (keys.KeyS ? 1 : 0);
+  const s = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0);
+
+  const run = (keys.ShiftLeft || keys.ShiftRight) ? SPRINT_MULT : 1;
+  const me = { x: px, y: py };
+  const ox = px, oy = py;
+
+  tryMove(
+    me,
+    (dx * f + plx * s) * PLAYER_SPEED * run * t,
+    (dy * f + ply * s) * PLAYER_SPEED * run * t
+  );
+
+  px = me.x;
+  py = me.y;
+
+  const moved = Math.hypot(px - ox, py - oy) > 0.0005;
+
+  if ((f || s) && moved) {
+    bob += t * 9 * run;
+    const st = Math.floor(bob / Math.PI); // one footstep per bob half-cycle
+    if (st !== lastStep) {
+      lastStep = st;
+      stepSound();
+    }
+  } else {
+    lastStep = -1;
+  }
+
+  if (mouseDX) {
+    turn(mouseDX * MOUSE_SENS);
+    mouseDX = 0;
+  }
+
+  turn(
+    ((keys.ArrowRight ? 1 : 0) - (keys.ArrowLeft ? 1 : 0)) *
+    ARROW_TURN * t
+  );
+
+  dogs.forEach((d) => {
+
+    // BLOOD TIMER
+    if (!d.alive) {
+      if (d.animT < d.animDur) {
+        if (d.deathType === "flash") {
+          const k = KNOCKBACK_SPEED * (1 - d.animT / d.animDur);
+          tryMove(d, d.kbx * k * t, d.kby * k * t, 0.2);
+        }
+        d.animT += t;
+      } else {
+        d.bloodAge += t;
+      }
+      return;
+    }
+
+    const rx = px - d.x;
+    const ry = py - d.y;
+    const dist = Math.hypot(rx, ry);
+
+    d.bite = Math.max(0, d.bite - t);
+
+    let moving = false;
+
+    if (d.atk) {
+      // mid-attack: stand still
+      d.atkT -= t;
+
+      if (d.atk === 1 && d.atkT <= 0) {
+        d.atk = 2;
+        d.atkT = PUNCH_TIME;
+        if (dist <= HIT_RANGE) damagePlayer(DOG_BITE);
+      } else if (d.atk === 2 && d.atkT <= 0) {
+        d.atk = 0;
+        d.bite = ATTACK_COOLDOWN;
+      }
+    } else {
+      if (dist < 9 && dist > 0.6) {
+        tryMove(
+          d,
+          (rx / dist) * DOG_SPEED * t,
+          (ry / dist) * DOG_SPEED * t,
+          0.3
+        );
+        moving = true;
+      }
+
+      if (dist <= ATTACK_RANGE && d.bite === 0) {
+        d.atk = 1;
+        d.atkT = WINDUP_TIME * (0.8 + Math.random() * 0.4);
+      }
+    }
+
+    d.moving = moving;
+    if (moving) d.walk += t * WALK_SPEED;
+
+    if (d.groaner) {
+      d.groanT -= t;
+      if (d.groanT <= 0) {
+        d.groanT = GROAN_MIN + Math.random() * (GROAN_MAX - GROAN_MIN);
+        groan(dist);
+      }
+    }
+  });
+
+  updateDogTalk(t);
+
+  const left = dogs.filter((d) => d.alive).length;
+
+  if (msgT > 0) {
+    msgT -= t;
+    if (msgT <= 0) $("msg").textContent = "";
+  }
+
+  if (hp <= 0) {
+    state = "dead";
+    $("msg").textContent = "YOU GOT DOGGED";
+    $("say").textContent = "";
+
+    setTimeout(() => {
+      location.href = DEATH_TO;
+    }, 1500);
+  }
+
+  const lastWave = wave === WAVES.length - 1;
+
+  if (left === 0 && breakT < 0 && !lastWave) {
+    breakT = WAVE_BREAK_TIME;
+    showMsg(`WAVE ${wave + 1} CLEARED`, WAVE_BREAK_TIME);
+  }
+
+  if (breakT >= 0) {
+    breakT -= t;
+    if (breakT < 0) startWave(wave + 1);
+  }
+
+  if (left === 0 && lastWave && kai && !kai.on) {
+    kai.on = true;
+    showMsg("ALL WAVES CLEARED", 3);
+  }
+
+  $("top").textContent = left
+    ? `WAVE ${wave + 1}/${WAVES.length}  DOGS LEFT: ${left}`
+    : (kai && kai.on ? "" : `WAVE ${wave + 1}/${WAVES.length}`);
+  const ammoTxt = reloadT > 0 ? "RELOADING" : ammo <= 0 ? "RELOAD [R]" : `AMMO ${ammo}/${MAX_AMMO}`;
+  $("hp").innerHTML = `<span style="color:${ammo <= 0 && reloadT <= 0 ? "#fff" : "#ffbe4d"}">${ammoTxt}</span>` +
+    (ammoGainT > 0 ? ` <span style="color:#4d4">+${PUNCH_AMMO}</span>` : "") + `<br>HP ${Math.max(0, hp)}` +
+    (healT > 0 ? ` <span style="color:#4d4">+${healAmt}</span>` : "") +
+    (saveCd > 0 ? ` <span style="color:#999">${Math.ceil(saveCd)}s</span>` : "");
+
+  if (kai && kai.on && Math.hypot(kai.x - px, kai.y - py) < 1.4) {
+    finish();
+  }
+}
+
+function showAchievementPopup(title, desc) {
+  const el = document.createElement("div");
+  el.innerHTML = `<strong>🎉 ${title}</strong><br>${desc}`;
+  Object.assign(el.style, {
+    position: "fixed",
+    top: "20px",
+    left: "50%",
+    transform: "translateX(-50%) translateY(-20px)",
+    background: "#ba732a",
+    color: "#000",
+    border: "3px solid #fff",
+    boxShadow: "0 0 0 3px #000, 0 0 16px #ffbe4d",
+    padding: "14px 18px",
+    fontFamily: "'Press Start 2P', monospace",
+    fontSize: "12px",
+    lineHeight: "1.7",
+    textAlign: "center",
+    zIndex: 20000,
+    opacity: 0,
+    transition: "opacity .3s ease, transform .3s ease",
+    pointerEvents: "none"
+  });
+  document.documentElement.appendChild(el);   // on <html> so it isn't hidden by the body fade
+
+  requestAnimationFrame(() => requestAnimationFrame(() => {
+    el.style.opacity = 1;
+    el.style.transform = "translateX(-50%) translateY(0)";
+  }));
+  setTimeout(() => { el.style.opacity = 0; }, 3000);
+  setTimeout(() => el.remove(), 3400);
+}
+
+function unlockKissMyBoot() {
+  try {
+    const ach = JSON.parse(localStorage.getItem("achievements") || "{}");
+    if (ach.kissMyBoot) return;               // already unlocked, no popup
+    ach.kissMyBoot = "new";                   // "new" = unlock animation on the achievements page
+    localStorage.setItem("achievements", JSON.stringify(ach));
+
+    showAchievementPopup("Kiss My Boot", "Cleared the backyard.");
+    new Audio("achievement.mp3").play().catch(() => {});
+  } catch (e) {}
+}
+
+function finish() {
+  state = "done";
+
+  try {
+    const owned = JSON.parse(localStorage.getItem("unlockedCharacters") || "[]");
+    if (!owned.includes("Zhiynl")) {
+      owned.push("Zhiynl");
+      localStorage.setItem("unlockedCharacters", JSON.stringify(owned));
+    }
+  } catch (e) {}
+
+  unlockKissMyBoot();
+
+  sessionStorage.setItem("completedBackyard", "true");
+
+  $("say").textContent = "";
+  $("msg").innerHTML = "KAI: thank u goat";
+
+  setTimeout(() => {
+    document.body.style.transition = "opacity .8s";
+    document.body.style.opacity = 0;
+  }, 3000);
+
+  setTimeout(() => {
+    location.href = RETURN_TO;
+  }, 3900);
+}
+
+/* ---------- Minimap ---------- */
+function drawMinimap() {
+  if (!mmOn) return;
+
+  const mw = grid[0].length * MM_TILE;
+  const mh = grid.length * MM_TILE;
+  const ox = W - mw - MM_MARGIN;
+  const oy = MM_MARGIN;
+
+  ctx.save();
+  ctx.globalAlpha = MM_ALPHA;
+  ctx.fillStyle = "rgba(0,0,0,0.5)";
+  ctx.fillRect(ox - 1, oy - 1, mw + 2, mh + 2);
+
+  grid.forEach((row, y) => {
+    row.forEach((c, x) => {
+      if (c === "#") ctx.fillStyle = "rgba(255,255,255,0.22)";
+      else if (c === "%") ctx.fillStyle = "rgba(255,255,255,0.12)";
+      else return;
+      ctx.fillRect(ox + x * MM_TILE, oy + y * MM_TILE, MM_TILE, MM_TILE);
+    });
+  });
+
+  const dot = (x, y, fill, stroke) => {
+    ctx.beginPath();
+    ctx.arc(ox + x * MM_TILE, oy + y * MM_TILE, MM_DOT, 0, TAU);
+    ctx.fillStyle = fill;
+    ctx.fill();
+    if (stroke) {
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = 0.7;
+      ctx.stroke();
+    }
+  };
+
+  dogs.forEach((d) => {
+    if (d.alive && Math.hypot(d.x - px, d.y - py) <= MM_RANGE) dot(d.x, d.y, "#e22");
+  });
+  if (kai && kai.on) dot(kai.x, kai.y, "#000", "#fff");
+  dot(px, py, "#ffc800");
+
+  ctx.restore();
+}
+
+/* ---------- Main Loop ---------- */
+let last = performance.now();
+
+function loop(now) {
+  const t = Math.min(0.05, (now - last) / 1000);
+  last = now;
+
+  faceT = Math.max(0, faceT - t);
+  hurtT = Math.max(0, hurtT - t);
+  crazedT = Math.max(0, crazedT - t);
+  healT = Math.max(0, healT - t);
+  if (sayT > 0) {
+    sayT -= t;
+    if (sayT <= 0) $("say").textContent = "";
+  }
+  update(t);
+
+  const env = shotEnv();
+  shakeT = Math.max(0, shakeT - t);
+  const pk = shakeT > 0 ? shakeAmp * (shakeT / shakeDur) : 0;
+
+  ctx.save();
+
+  if (SCREEN_SHAKE && (env > 0 || pk > 0)) {
+    const sh = SHAKE_PX * env + pk;
+    ctx.translate(
+      W / 2 + (Math.random() * 2 - 1) * sh,
+      H / 2 + (Math.random() * 2 - 1) * sh
+    );
+
+    const zoom = env > 0 ? 1.02 : 1 + Math.min(0.04, pk * 0.003);
+    ctx.scale(zoom, zoom);
+    ctx.translate(-W / 2, -H / 2);
+  }
+
+  drawWorld();
+  drawSprites();
+
+  ctx.restore();
+
+  if (env > 0) {
+    ctx.globalCompositeOperation = "lighter";
+    ctx.fillStyle = `rgba(255,190,110,${BRIGHT * env})`;
+    ctx.fillRect(0, 0, W, H);
+    ctx.globalCompositeOperation = "source-over";
+  }
+
+  drawGun(env);
+  drawFace();
+  drawMinimap();
+
+  requestAnimationFrame(loop);
+}
+
+reset();
+requestAnimationFrame(loop);
+
+</script>
+</body>
+</html>

@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>da zhiy</title>
+  <link rel="stylesheet" href="shop.css">
+  <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+  <style>
+    /* No sprite up top, so the dialogue doesn't need the extra room */
+    #zhiynl-dialogue { margin-top: 0; }
+
+    /* Falling sparkles live above everything but never block clicks */
+    #sparkle-canvas {
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 50;
+    }
+
+    /* Shake for the BUY button.
+       Uses the separate "translate" property instead of "transform",
+       so it never overrides any centering transforms from shop.css.
+       Only the boxes and BUY shake. Exit and mute stay put. */
+    @keyframes shop-shake {
+      0%, 100% { translate: 0 0; }
+      20%      { translate: -6px 0; }
+      40%      { translate: 6px 0; }
+      60%      { translate: -4px 0; }
+      80%      { translate: 4px 0; }
+    }
+    .buy-shake { animation: shop-shake 0.4s; }
+  </style>
+</head>
+<body>
+  <div id="shop-container">
+
+    <!-- ===== Dialogue Box (you, talking to yourself) ===== -->
+    <div id="dialogue-box">
+      <p id="zhiynl-dialogue">...</p>
+    </div>
+
+    <!-- ===== Conversation Box ===== -->
+    <div id="conversation-box" style="display:none;">
+      <h3>SPEAK</h3>
+      <button class="dialogue-option" data-replies='["My dad owns a condom company","and honey packets","Whenever people asked, I would just say he sells honey","And obviously they eat that shit up"]'>
+        Business
+      </button>
+      <button class="dialogue-option" data-replies='["People come and go","But it is fine","If the friendship is destined","It will find a way back", "God will give me what I am owed", "I would be a fool to expect anything else :]"]'>
+        People and friends
+      </button>
+      <button class="dialogue-option" data-replies='["Think about a word too much and then letters start to look weird","Grammar, as complex as it seems, still kind of looks like caveman gibberish if you look hard enough","Food for thought"]'>
+        Language
+      </button>
+      <button class="dialogue-option" data-replies='["I would rather not think about stupid shit right now"]'>
+        Blow up a local gas store
+      </button>
+    </div>
+
+    <!-- ===== Audio ===== -->
+    <audio id="insufficient-sfx" src="assets/insufficient.mp3" preload="auto"></audio>
+    <audio id="shop-music" src="assets/songs/sotemperate.mp3" loop></audio>
+    <audio id="hover-sfx" src="assets/shopbuttonhover.mp3" preload="auto"></audio>
+    <audio id="click-sfx" src="assets/shopbuttonclick.mp3" preload="auto"></audio>
+
+    <!-- ===== Buttons ===== -->
+    <button id="talk-btn">💬 Conversation</button>
+    <button id="buy-btn">🛒 BUY</button>
+    <button id="exit-btn">LEAVE</button>
+    <button id="mute-btn">🔊</button>
+  </div>
+
+  <canvas id="sparkle-canvas"></canvas>
+
+  <script>
+  (() => {
+    const $ = (id) => document.getElementById(id);
+
+    /* ---------------- Config ---------------- */
+    const TYPEWRITER_DELAY = 25;
+    const SPARKLE_COUNT    = 32;   // keep this low, it's meant to be subtle
+
+    /* ---------------- Helpers ---------------- */
+    function getMuted() {
+      try { return JSON.parse(localStorage.getItem("musicMuted") || "false"); }
+      catch { return false; }
+    }
+    function setMuted(v) {
+      try { localStorage.setItem("musicMuted", JSON.stringify(v)); } catch {}
+    }
+    function playSfx(id) {
+      const el = $(id);
+      if (!el) return;
+      el.currentTime = 0;
+      el.play().catch(() => {});
+    }
+
+    /* ---------------- Dialogue ---------------- */
+    const dialogueEl = $("zhiynl-dialogue");
+    const convoBox   = $("conversation-box");
+    let typeTimer;
+
+    function typeWriter(text, el, cb) {
+      clearInterval(typeTimer);
+      let i = 0;
+      el.textContent = "";
+      typeTimer = setInterval(() => {
+        el.textContent += text[i] || "";
+        i++;
+        if (i >= text.length) {
+          clearInterval(typeTimer);
+          if (cb) cb();
+        }
+      }, TYPEWRITER_DELAY);
+    }
+
+    function typeLines(lines, el, onDone) {
+      let i = 0;
+      const next = () => {
+        if (i >= lines.length) { if (onDone) onDone(); return; }
+        typeWriter(lines[i], el, () => {
+          i++;
+          setTimeout(next, i >= lines.length ? 1000 : 600);
+        });
+      };
+      next();
+    }
+
+    $("talk-btn").addEventListener("click", () => {
+      const open = getComputedStyle(convoBox).display !== "none";
+      convoBox.style.display = open ? "none" : "block";
+    });
+
+    document.querySelectorAll(".dialogue-option").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const replies = JSON.parse(btn.dataset.replies);
+        convoBox.style.display = "none";
+        typeLines(replies, dialogueEl, () => { convoBox.style.display = "block"; });
+      });
+    });
+
+    /* ---------------- Buy: does nothing, just the sound + shake ---------------- */
+    $("buy-btn").addEventListener("click", () => {
+      playSfx("insufficient-sfx");
+      // Shake these only. Exit and mute are left alone so they stay in place.
+      const targets = [$("dialogue-box"), $("conversation-box"), $("buy-btn")];
+      targets.forEach((el) => {
+        el.classList.remove("buy-shake");
+        void el.offsetWidth; // restart the animation on rapid clicks
+        el.classList.add("buy-shake");
+      });
+      setTimeout(() => targets.forEach((el) => el.classList.remove("buy-shake")), 400);
+    });
+
+    /* ---------------- Music & mute ---------------- */
+    const music   = $("shop-music");
+    const muteBtn = $("mute-btn");
+    let muted = getMuted();
+
+    music.muted = muted;
+    music.play().catch(() => {
+      const kick = () => {
+        music.play().catch(() => {});
+        document.removeEventListener("click", kick);
+      };
+      document.addEventListener("click", kick);
+    });
+
+    function renderMute() { muteBtn.textContent = muted ? "🔇" : "🔊"; }
+    renderMute();
+    muteBtn.addEventListener("click", () => {
+      muted = !muted;
+      music.muted = muted;
+      setMuted(muted);
+      renderMute();
+    });
+
+    $("exit-btn").addEventListener("click", () => {
+      setTimeout(() => { window.location.href = "index.html"; }, 150);
+    });
+
+    /* ---------------- Button hover / click sfx ---------------- */
+    document.querySelectorAll("button").forEach((b) => {
+      b.addEventListener("pointerenter", () => playSfx("hover-sfx"));
+      // BUY plays insufficient.mp3 instead of the normal click sound
+      if (b.id !== "buy-btn") b.addEventListener("click", () => playSfx("click-sfx"));
+    });
+
+    /* ---------------- Falling sparkles / snow / stars ---------------- */
+    const canvas = $("sparkle-canvas");
+    const ctx = canvas.getContext("2d");
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    let W = 0, H = 0, dpr = 1;
+
+    function resize() {
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      W = window.innerWidth;
+      H = window.innerHeight;
+      canvas.width = W * dpr;
+      canvas.height = H * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    window.addEventListener("resize", resize);
+    resize();
+
+    const COLORS = ["#ffffff", "#cfe8ff", "#fff3b0", "#ffffff"];
+
+    function makeParticle(anywhere) {
+      const star = Math.random() < 0.35; // some are 4-point stars, the rest are snow dots
+      return {
+        x: Math.random() * W,
+        y: anywhere ? Math.random() * H : -10,
+        size: star ? 2.5 + Math.random() * 2.5 : 1 + Math.random() * 1.8,
+        speed: 14 + Math.random() * 22,          // px per second, slow drift
+        sway: 6 + Math.random() * 14,
+        swaySpeed: 0.4 + Math.random() * 0.8,
+        phase: Math.random() * Math.PI * 2,
+        twinkleSpeed: 1 + Math.random() * 2,
+        color: COLORS[Math.floor(Math.random() * COLORS.length)],
+        star,
+      };
+    }
+
+    function drawStar(x, y, r) {
+      // simple 4-point sparkle
+      ctx.beginPath();
+      ctx.moveTo(x, y - r);
+      ctx.quadraticCurveTo(x, y, x + r, y);
+      ctx.quadraticCurveTo(x, y, x, y + r);
+      ctx.quadraticCurveTo(x, y, x - r, y);
+      ctx.quadraticCurveTo(x, y, x, y - r);
+      ctx.fill();
+    }
+
+    if (!reduceMotion) {
+      const particles = Array.from({ length: SPARKLE_COUNT }, () => makeParticle(true));
+      let last = performance.now();
+
+      function frame(now) {
+        const dt = Math.min(0.05, (now - last) / 1000);
+        last = now;
+        ctx.clearRect(0, 0, W, H);
+
+        for (let i = 0; i < particles.length; i++) {
+          const p = particles[i];
+          p.y += p.speed * dt;
+          p.phase += p.swaySpeed * dt;
+          const px = p.x + Math.sin(p.phase) * p.sway;
+
+          if (p.y > H + 10) { particles[i] = makeParticle(false); continue; }
+
+          const twinkle = 0.35 + 0.65 * Math.abs(Math.sin(now / 1000 * p.twinkleSpeed + p.phase));
+          ctx.globalAlpha = twinkle * (p.star ? 0.9 : 0.7);
+          ctx.fillStyle = p.color;
+
+          if (p.star) {
+            drawStar(px, p.y, p.size);
+          } else {
+            ctx.beginPath();
+            ctx.arc(px, p.y, p.size, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+        ctx.globalAlpha = 1;
+        requestAnimationFrame(frame);
+      }
+      requestAnimationFrame(frame);
+    }
+  })();
+  </script>
+</body>
+</html>

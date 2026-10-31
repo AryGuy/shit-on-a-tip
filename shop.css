@@ -1,6 +1,3 @@
-/* =========================
-   General / Reset Styles
-========================= */
 * {
   box-sizing: border-box;
 }
@@ -19,9 +16,6 @@ body {
   text-align: center;
 }
 
-/* =========================
-   Containers / Layout
-========================= */
 #shop-container,
 .shop-container {
   border: 3px solid white;
@@ -37,7 +31,7 @@ body {
   width: 170px;
   image-rendering: pixelated;
   z-index: 5;
-  top: 0;  /* remove previous 60px */
+  top: 0;  
 }
 
 #dialogue-box,
@@ -74,13 +68,10 @@ body {
   background-size: contain;
 }
 
-/* =========================
-   Sprites / Images
-========================= */
 #zhiynl-sprite {
   position: absolute;
-  top: 10px;       /* small offset from top */
-  right: 10px;     /* small offset from right */
+  top: 10px;       
+  right: 10px;     
   width: 200px;
   height: auto;
   image-rendering: pixelated;
@@ -88,7 +79,7 @@ body {
   cursor: pointer;
   transform-origin: center;
   transition: transform 0.3s ease;
-  z-index: 10;     /* above background */
+  z-index: 10;    
 }
 
 #zhiynl-dialogue {
@@ -96,11 +87,11 @@ body {
   font-size: 11px;
   color: white;
   background: #111;
-  padding: 16px 16px 16px 24px; /* more left padding for indentation */
+  padding: 16px 16px 16px 24px; 
   white-space: pre-wrap;
   min-height: 100px;
   margin-top: 60px;
-  line-height: 1.6; /* more spacing between lines */
+  line-height: 1.6;
   text-align: left;
   text-shadow:
     -1px -1px 0 black,
@@ -109,9 +100,6 @@ body {
      1px  1px 0 black;
 }
 
-/* =========================
-   Buttons / UI
-========================= */
 #mute-btn {
   position: fixed;
   top: 10px;
@@ -195,9 +183,6 @@ body {
   background-color: #eee;
 }
 
-/* =========================
-   Dialogue Options
-========================= */
 .dialogue-option {
   display: block;
   margin: 10px auto;
@@ -269,6 +254,50 @@ body {
   animation: fadeOut 1.2s forwards;
 }
 
+@keyframes chacha {
+  0%   { translate: 0 0; }
+
+  3%   { translate: -30px -14px; }
+  6%   { translate: -60px 0; }
+  9%   { translate: -90px -14px; }
+  12%  { translate: -120px 0; }
+  15%  { translate: -150px -14px; }
+  18%  { translate: -180px 0; }
+  25%  { translate: -180px 0; }
+
+  28%  { translate: -150px -14px; }
+  31%  { translate: -120px 0; }
+  34%  { translate: -90px -14px; }
+  37%  { translate: -60px 0; }
+  40%  { translate: -30px -14px; }
+  43%  { translate: 0 0; }
+  50%  { translate: 0 0; }
+
+  53%  { translate: 30px -14px; }
+  56%  { translate: 60px 0; }
+  59%  { translate: 90px -14px; }
+  62%  { translate: 120px 0; }
+  65%  { translate: 150px -14px; }
+  68%  { translate: 180px 0; }
+  75%  { translate: 180px 0; }
+
+  78%  { translate: 150px -14px; }
+  81%  { translate: 120px 0; }
+  84%  { translate: 90px -14px; }
+  87%  { translate: 60px 0; }
+  90%  { translate: 30px -14px; }
+  93%  { translate: 0 0; }
+  100% { translate: 0 0; }
+}
+
+#zhiynl-sprite.dancing {
+  animation: chacha 8s ease-in-out infinite;
+}
+
+#zhiynl-sprite.dancing.squish {
+  animation: chacha 8s ease-in-out infinite, squish 0.15s ease;
+}
+
 @keyframes spinny {
   0% { transform: rotate(0deg); }
   25% { transform: rotate(30deg); }
@@ -298,16 +327,14 @@ body {
     word-wrap: break-word;
     line-height: 1.2em;
     text-align: center;
-    width: 600px;       /* make it longer horizontally */
-    max-width: 80%;     /* responsive on smaller screens */
+    width: 600px;      
+    max-width: 80%;     
   }
 
   .achievement-popup.show {
     opacity: 1;
   }
-/* ===================================
-   SHOP PAGE / CATEGORY LAYOUT
-=================================== */
+
 #category-wrapper {
   border: 3px solid #222;
   background: #fdf6e3 url('assets/notebook-lines.png') repeat-y;
@@ -321,7 +348,6 @@ body {
   box-shadow: 0 0 20px rgba(0,0,0,0.6);
 }
 
-/* Spiral binding effect */
 #category-wrapper::before {
   content: '';
   position: absolute;
@@ -333,7 +359,6 @@ body {
   background-size: contain;
 }
 
-/* Category navigation bar */
 #category-nav {
   display: flex;
   justify-content: center;
@@ -360,7 +385,6 @@ body {
   color: #fff;
 }
 
-/* Category content inside shared paper border */
 #category-content {
   padding-top: 10px;
 }
@@ -373,7 +397,6 @@ body {
   display: block;
 }
 
-/* Category items text style */
 .category-section ul {
   list-style: none;
   padding: 0;
@@ -402,7 +425,6 @@ body {
   background: #eee;
 }
 
-/* Stylized shop container */
 #shop-sections {
   background: #fdf6e3 url('assets/notebook-lines.png') repeat-y;
   background-size: 100% 20px;
@@ -420,7 +442,6 @@ body {
   z-index: 5;
 }
 
-/* Spiral binding effect */
 #shop-sections::before {
   content: '';
   position: absolute;
@@ -432,7 +453,6 @@ body {
   background-size: contain;
 }
 
-/* Section headers */
 .shop-section h3 {
   font-size: 12px;
   color: #111;
@@ -441,7 +461,6 @@ body {
   padding-bottom: 6px;
 }
 
-/* Item list styling */
 .shop-section ul {
   list-style: none;
   padding: 0;
@@ -452,7 +471,6 @@ body {
   margin: 14px 0;
 }
 
-/* Buy buttons */
 .shop-section .buy-item {
   font-family: 'Press Start 2P', cursive;
   font-size: 9px;
@@ -469,11 +487,11 @@ body {
   background: #eee;
 }
 .shop-section {
-  display: none; /* hide all by default */
+  display: none; 
 }
 
 .shop-section.active {
-  display: block; /* only show the active section */
+  display: block; 
 }
 #shop-tabs {
   display: flex;
@@ -481,7 +499,7 @@ body {
   gap: 12px;
   margin-bottom: 20px;
   position: relative;
-  z-index: 10; /* so they hover above shop content */
+  z-index: 10; 
 }
 
 .tab-btn {
@@ -493,23 +511,23 @@ body {
   padding: 10px 14px;
   cursor: pointer;
   position: relative;
-  top: 10px; /* makes it look raised above the content */
+  top: 10px; 
   transition: all 0.2s ease;
-  box-shadow: 0 4px 0 #444; /* slight shadow for 3D effect */
+  box-shadow: 0 4px 0 #444; 
 }
 
 .tab-btn:hover {
   background-color: #eee;
   color: #222;
-  transform: translateY(-2px); /* subtle hover lift */
+  transform: translateY(-2px); 
 }
 
 .tab-btn.active {
   background-color: #222;
   color: #fff;
-  top: 0; /* active tab sits flush with content */
+  top: 0; 
   box-shadow: none;
-  border-bottom: 2px solid #fdf6e3; /* visually connects to content below */
+  border-bottom: 2px solid #fdf6e3; 
 }
 #shop-notebook {
   position: relative;
@@ -518,37 +536,34 @@ body {
   background: #fdf6e3 url('assets/notebook-lines.png') repeat-y;
   border: 2px solid #333;
   box-shadow: 0 0 20px rgba(0,0,0,0.6);
-  padding: 60px 40px 40px 40px; /* top space for spiral + tabs */
+  padding: 60px 40px 40px 40px; 
 }
 
-/* spiral on the side */
 #shop-notebook::before {
   content: '';
   position: absolute;
   top: 0;
-  left: -12px; /* hang outside the notebook */
-  width: 10px; /* spiral width */
-  height: 100%; /* full notebook height */
+  left: -12px; 
+  width: 10px; 
+  height: 100%; 
   background: url('assets/spiral.png') repeat-y;
   background-size: contain;
-  z-index: 1; /* behind everything inside notebook */
+  z-index: 1; 
 }
 #shop-notebook {
-  display: none; /* hide by default */
+  display: none; 
 }
-/* Tooltip container */
 .buy-item {
   position: relative;
   cursor: pointer;
 }
 
-/* Tooltip text */
 .buy-item::after {
-  content: attr(data-description); /* Grab description from HTML */
+  content: attr(data-description); 
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
-  bottom: 125%; /* Show above the button */
+  bottom: 125%; 
   background-color: #333;
   color: #fff;
   padding: 5px 8px;
@@ -561,7 +576,6 @@ body {
   z-index: 10;
 }
 
-/* Show tooltip on hover */
 .buy-item:hover::after {
   opacity: 1;
 }

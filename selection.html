@@ -4,9 +4,139 @@
   <meta charset="UTF-8">
   <title>Fine Shyt Selection</title>
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="selection.css">
   <style>
-    /* === HUD for Selected Player === */
+    body {
+  background-color: #000;
+  color: #ffffff;
+  font-family: 'Press Start 2P', monospace;
+  text-align: center;
+  padding: 40px;
+  overflow-x: hidden;
+  background-image: repeating-linear-gradient(
+    45deg,
+    #1a1a1a,
+    #1a1a1a 10px,
+    #111 10px,
+    #111 20px
+  );
+}
+
+h1 {
+  font-size: 1.2rem;
+  letter-spacing: 2px;
+  margin-bottom: 30px;
+  background-color: #fff;
+  color: #000;
+  padding: 20px;
+  display: inline-block;
+  border: 4px dashed #333;
+  text-shadow: none;
+}
+
+#coin-display {
+  font-family: 'Press Start 2P', cursive;
+  color: gold;
+  text-shadow: 2px 2px #000;
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+#carousel-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin: 20px 0;
+  gap: 20px;
+}
+
+#character-image {
+  width: 250px;
+  height: 250px;
+  background-color: #111;
+  border: 4px dashed #ba732a;
+  padding: 10px;
+  image-rendering: pixelated;
+  filter: contrast(120%);
+  box-shadow: 0 0 20px #ba732a;
+}
+
+#character-name {
+  font-size: 1rem;
+  margin: 10px 0;
+  color: #ffbe4d;
+  text-shadow: 1px 1px 0 #000;
+}
+
+button {
+  background-color: #ba732a;
+  border: 3px solid white;
+  color: black;
+  font-family: 'Press Start 2P', monospace;
+  font-size: 0.7rem;
+  padding: 10px 20px;
+  margin: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+  box-shadow: 0 0 0 3px black;
+}
+
+button:hover {
+  background-color: #ffbe4d;
+  transform: scale(1.05);
+  box-shadow: 0 0 10px #ffbe4d;
+}
+
+#select-btn {
+  background-color: #ffbe4d;
+  color: #000;
+  border-color: #fff;
+  font-size: 0.8rem;
+  margin-top: 10px;
+}
+
+#select-btn:hover {
+  background-color: #fff;
+  color: #ba732a;
+  border-color: #ba732a;
+}
+
+#start-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  filter: grayscale(100%);
+}
+
+#chosen-list {
+  list-style: none;
+  padding: 0;
+  margin: 10px auto 20px;
+  max-width: 300px;
+}
+
+#chosen-list li {
+  background: #222;
+  border: 2px solid #ffbe4d;
+  margin: 5px;
+  padding: 5px;
+  font-size: 0.7rem;
+  color: white;
+}
+
+.return-btn {
+  background-color: #ffbe4d;
+  color: #000;
+  font-size: 0.7rem;
+  border: 3px solid white;
+  padding: 10px 20px;
+  margin-top: 20px;
+}
+
+.return-btn:hover {
+  background-color: #fff;
+  color: #ba732a;
+  border-color: #ba732a;
+}
     #individuals-display {
       position: fixed;
       top: 80px;
@@ -47,59 +177,164 @@
       text-shadow: 2px 2px 0 #000;
       word-wrap: break-word;
     }
+
+    h1 { margin-bottom: 40px; }
+    #main-layout {
+      display: flex;
+      justify-content: center;
+      align-items: flex-start;
+      gap: 60px;
+      flex-wrap: wrap;
+      margin: 0 auto;
+      max-width: 1000px;
+    }
+    #left-col, #right-col { display: flex; flex-direction: column; align-items: center; }
+    #character-name { margin: 0 0 16px; min-height: 1.4em; }
+    #carousel-container { margin: 0 0 16px; }
+    #select-row { display: flex; align-items: center; justify-content: center; gap: 10px; }
+    #select-row button { margin: 0; }
+    #random-btn { position: relative; padding: 10px 14px; }
+    #random-btn::after {
+      content: "Randomize and start";
+      position: absolute;
+      bottom: calc(100% + 12px);
+      left: 50%;
+      transform: translateX(-50%);
+      white-space: nowrap;
+      background: #fff;
+      color: #000;
+      border: 3px solid #000;
+      box-shadow: 0 0 0 3px #ffbe4d;
+      font-size: 0.55rem;
+      padding: 8px 10px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.15s ease;
+      z-index: 20;
+    }
+    #random-btn:hover::after, #random-btn:focus-visible::after { opacity: 1; }
+    #info-panel {
+      width: 320px;
+      background: #111;
+      border: 4px solid #fff;
+      box-shadow: 0 0 0 4px #000, 0 0 20px #ba732a;
+      padding: 20px;
+      text-align: left;
+      font-size: 0.7rem;
+      line-height: 2;
+    }
+    #info-panel .row { display: flex; justify-content: space-between; gap: 10px; }
+    #info-panel .row span:last-child { color: #ffbe4d; }
+    #coin-display { margin: 0; font-size: inherit; text-shadow: none; color: inherit; }
+    #coin-display .coin-label { color: #fff; }
+    #chosen-list { max-width: none; margin: 8px 0 14px; min-height: 8px; }
+    #chosen-list li { text-align: center; }
+    #start-btn { display: block; margin: 10px auto 0; width: 100%; }
+    #hardmode-toggle-container { margin-top: 18px; display: flex; align-items: center; gap: 14px; }
+    #hardmode-label { font-size: 0.6rem; }
+    #hardmode-state { color: #ffbe4d; }
+    #hardmode-switch {
+      background: none; border: none; box-shadow: none; padding: 0; margin: 0;
+      width: 110px; cursor: pointer; transform: none; line-height: 0;
+    }
+    #hardmode-switch:hover { background: none; transform: scale(1.05); box-shadow: none; }
+    #hardmode-switch img { width: 100%; height: auto; display: block; image-rendering: auto; }
+    #hardmode-switch.locked { opacity: 0.35; filter: grayscale(100%); cursor: not-allowed; }
+    #hardmode-switch.locked:hover { transform: none; }
+    #hardmode-note { font-size: 0.45rem; color: #888; margin-top: 6px; }
+
+    #high-score-wrap { display: none; }
+    .return-btn { margin-top: 50px; }
+
+    #fade-overlay {
+      position: fixed; inset: 0; background: #000; opacity: 0;
+      pointer-events: none; z-index: 99999; transition: opacity 0.5s ease;
+    }
+    #fade-overlay.active { opacity: 1; pointer-events: all; }
+    #individual-wrap { position: relative; display: inline-block; line-height: 0; }
+    #individual-wrap::after {
+      content: attr(data-name);
+      position: absolute;
+      top: calc(100% + 10px);
+      left: 50%;
+      transform: translateX(-50%);
+      white-space: nowrap;
+      background: #fff;
+      color: #000;
+      border: 3px solid #000;
+      box-shadow: 0 0 0 3px #ffbe4d;
+      font-size: 0.5rem;
+      line-height: 1.4;
+      padding: 6px 8px;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.15s ease;
+      z-index: 20;
+    }
+    #individual-wrap:hover::after { opacity: 1; }
+    #individual-icon { margin-bottom: 0; cursor: help; }
   </style>
 </head>
 <body>
-  <!-- === HUD (shows selected player) === -->
   <div id="individuals-display">
     <div id="individual-label">Currently playing as:</div>
-    <img id="individual-icon" src="" alt="Icon">
-    <div id="individual-name">None</div>
+    <div id="individual-wrap" data-name="Regular Dude">
+      <img id="individual-icon" src="assets/chars/Regulardude.png" alt="Regular Dude">
+    </div>
   </div>
 
-  <h1>Choose Your 3 Fine Shyt</h1>
-  <div id="coin-display">🪙 Coins: <span id="coin-count">0</span></div>
+  <h1>Select Ur Fine Shyt</h1>
 
-  <div id="hardmode-toggle-container" style="margin-top: 10px;">
-    <label>
-      <input type="checkbox" id="hardmode-toggle">
-      Hard Mode
-    </label>
+  <div id="main-layout">
+    <div id="left-col">
+      <h2 id="character-name">Character Name</h2>
+
+      <div id="carousel-container">
+        <button id="left-arrow" class="action-btn">&lt;</button>
+        <img id="character-image" src="" alt="Character Image">
+        <button id="right-arrow" class="action-btn">&gt;</button>
+      </div>
+
+      <div id="select-row">
+        <button id="select-btn" class="action-btn">Select This Shyt</button>
+        <button id="random-btn" class="action-btn" aria-label="Randomize and start">?</button>
+      </div>
+    </div>
+
+    <div id="right-col">
+      <div id="info-panel">
+        <div class="row"><span>High Score:</span><span id="high-score">0</span></div>
+        <div class="row" id="coin-display"><span class="coin-label">Coins:</span><span>🪙 <span id="coin-count">0</span></span></div>
+        <div class="row"><span>Chosen:</span><span><span id="chosen-count">0</span>/3</span></div>
+        <ul id="chosen-list"></ul>
+        <button id="start-btn" class="nav-btn" disabled>Start</button>
+      </div>
+
+      <div id="hardmode-toggle-container">
+        <span id="hardmode-label">Hard mode: <span id="hardmode-state">off</span></span>
+        <button id="hardmode-switch" type="button" role="switch" aria-checked="false" aria-label="Hard mode">
+          <img id="hardmode-img" src="assets/switch_off.png" alt="">
+        </button>
+      </div>
+      <div id="hardmode-note"></div>
+    </div>
   </div>
-
-  <div id="carousel-container">
-    <button id="left-arrow" class="action-btn">&lt;</button>
-    <img id="character-image" src="" alt="Character Image">
-    <button id="right-arrow" class="action-btn">&gt;</button>
-  </div>
-
-  <h2 id="character-name">Character Name</h2>
-  <button id="select-btn" class="action-btn">Select This Shyt</button>
-
-  <p>Chosen: <span id="chosen-count">0</span>/3</p>
-  <ul id="chosen-list"></ul>
-
-  <button id="start-btn" class="nav-btn" disabled>Start Game</button>
-
-  <p style="margin-top: 20px; font-size: 1.2rem;">
-    High Score: <span id="high-score">0</span>
-  </p>
 
   <button data-href="index.html" class="nav-btn return-btn">
     Return to Main Menu
   </button>
 
-  <!-- Sounds -->
+  <div id="fade-overlay"></div>
+
   <audio id="hover-sfx" src="assets/buttonhover.mp3" preload="auto"></audio>
   <audio id="click-sfx" src="assets/buttonclick.mp3" preload="auto"></audio>
   <audio id="selection-music" src="assets/selectionmusic.mp3" loop></audio>
+  <audio id="hardmode-switch-sfx" src="assets/hardmodeswitch.mp3" preload="auto"></audio>
   <audio id="select-click-sfx" src="assets/selectclick.mp3" preload="auto"></audio>
 
-  <!-- === Shared coin system === -->
   <script src="coinCore.js"></script>
 
   <script>
-    // === MUSIC HANDLER ===
     const selectionMusic = document.getElementById('selection-music');
     const playMusic = () => {
       if (!selectionMusic) return;
@@ -111,7 +346,6 @@
   </script>
 
   <script>
-    // === CHARACTER DATA ===
     const profiles = [
       { name: "Zewonie", img: "assets/Zewonie.png" },
       { name: "Dennis", img: "assets/Dennis.png" },
@@ -174,26 +408,44 @@
       startBtn.disabled = selected.length !== 3;
     });
 
-    startBtn.addEventListener('click', (e) => {
-      e.preventDefault();
+    function startGame() {
       const clickSfx = document.getElementById('click-sfx');
-      const chosen = JSON.stringify(selected);
       clickSfx.currentTime = 0;
       clickSfx.play().catch(() => {});
-      sessionStorage.setItem("chosenTargets", chosen);
-      setTimeout(() => window.location.href = "game.html", 200);
+      sessionStorage.setItem("chosenTargets", JSON.stringify(selected));
+      document.documentElement.style.overflow = 'hidden';
+      document.body.style.overflow = 'hidden';
+      document.getElementById('fade-overlay').classList.add('active');
+      setTimeout(() => window.location.href = "game.html", 500);
+    }
+
+    startBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      if (selected.length === 3) startGame();
+    });
+
+    document.getElementById('random-btn').addEventListener('click', () => {
+      const pool = profiles.map(p => p.name).filter(n => !selected.includes(n));
+      while (selected.length < 3 && pool.length) {
+        const name = pool.splice(Math.floor(Math.random() * pool.length), 1)[0];
+        selected.push(name);
+        const li = document.createElement('li');
+        li.textContent = name;
+        chosenList.appendChild(li);
+      }
+      chosenCount.textContent = selected.length;
+      startBtn.disabled = selected.length !== 3;
+      startGame();
     });
 
     document.getElementById("high-score").textContent = localStorage.getItem("highScore") || 0;
 
-    // === Sync coin count from coinCore.js ===
-    if (window.shopAPI) shopAPI.addCoins(0); // triggers display refresh
+    if (window.shopAPI) shopAPI.refresh(); 
 
     updateDisplay();
   </script>
 
   <script>
-    // === BUTTON SOUND HANDLERS ===
     const hoverSfx = document.getElementById('hover-sfx');
     const clickSfx = document.getElementById('click-sfx');
     document.querySelectorAll('.action-btn, .nav-btn').forEach(btn => {
@@ -206,8 +458,6 @@
         clickSfx.play().catch(() => {});
       });
     });
-
-    // === RETURN BUTTON ===
     const returnBtn = document.querySelector('.return-btn');
     if (returnBtn) {
       returnBtn.addEventListener('click', (e) => {
@@ -219,33 +469,43 @@
       });
     }
 
-    // === PLAYER CHARACTER HUD ===
     const displayIcon = document.getElementById("individual-icon");
-    const displayName = document.getElementById("individual-name");
+    const displayWrap = document.getElementById("individual-wrap");
     const storedChar = sessionStorage.getItem("playerCharacter");
-
-    if (storedChar) {
-      displayIcon.src = `./assets/chars/${storedChar}.png`;
-      displayName.textContent = storedChar;
-    } else {
-      displayIcon.src = "";
-      displayName.textContent = "None";
-    }
-
-    // === HARD MODE VISIBILITY ===
-    const hardmodeContainer = document.getElementById("hardmode-toggle-container");
+    let unlockedList = [];
+    try { unlockedList = JSON.parse(localStorage.getItem("unlockedCharacters") || "[]"); } catch (e) {}
+    const hasChar = storedChar && unlockedList.includes(storedChar);
+    const hudName = hasChar ? storedChar : "Regular Dude";
+    displayIcon.src = hasChar ? `./assets/chars/${storedChar}.png` : "./assets/chars/Regulardude.png";
+    displayIcon.alt = hudName;
+    displayWrap.dataset.name = hudName;
+    const hmSwitch = document.getElementById("hardmode-switch");
+    const hmImg = document.getElementById("hardmode-img");
+    const hmState = document.getElementById("hardmode-state");
+    const hmNote = document.getElementById("hardmode-note");
     const hardmodeBought = localStorage.getItem("hardModeBought") === "true";
+    let hardOn = hardmodeBought && sessionStorage.getItem("hardModeActive") === "true"; // off by default
+
+    function renderHardMode() {
+      hmImg.src = hardOn ? "assets/switch_on.png" : "assets/switch_off.png";
+      hmState.textContent = hardOn ? "on" : "off";
+      hmSwitch.setAttribute("aria-checked", hardOn);
+      sessionStorage.setItem("hardModeActive", hardOn ? "true" : "false");
+    }
 
     if (!hardmodeBought) {
-      hardmodeContainer.style.display = "none";
+      document.getElementById("hardmode-toggle-container").style.display = "none";
+      hmNote.style.display = "none";
+      sessionStorage.setItem("hardModeActive", "false");
     } else {
-      hardmodeContainer.style.display = "block";
-      const hardmodeToggle = document.getElementById("hardmode-toggle");
-      hardmodeToggle.checked = sessionStorage.getItem("hardModeActive") === "true";
-      hardmodeToggle.addEventListener("change", () => {
-        sessionStorage.setItem("hardModeActive", hardmodeToggle.checked ? "true" : "false");
+      hmSwitch.addEventListener("click", () => {
+        hardOn = !hardOn;
+        renderHardMode();
+        const s = document.getElementById('hardmode-switch-sfx');
+        s.currentTime = 0; s.play().catch(() => {});
       });
     }
+    renderHardMode();
   </script>
 </body>
 </html>

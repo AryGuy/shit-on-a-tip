@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>ZHIYNL: BACKYARD</title>
+<link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
+<style>
+  html,body{margin:0;height:100%;background:#000;color:#fff;font-family:'Press Start 2P',monospace;overflow:hidden}
+  #wrap{position:relative;height:100%;display:flex;align-items:center;justify-content:center}
+  canvas{width:min(100vw,calc(100vh*1.6));image-rendering:pixelated;cursor:crosshair}
+  .ui{position:absolute;left:0;right:0;text-align:center;pointer-events:none;text-shadow:2px 2px #000}
+  #top{top:12px;font-size:10px;color:#ffbe4d}
+  #hp{bottom:12px;font-size:12px;color:#e33}
+  #msg{top:42%;font-size:14px;line-height:2em}
+  #hurt{position:absolute;inset:0;background:#c00;opacity:0;pointer-events:none;transition:opacity .25s}
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="c" width="640" height="400"></canvas>
+  <div id="hurt"></div>
+  <div class="ui" id="top"></div>
+  <div class="ui" id="msg"></div>
+  <div class="ui" id="hp"></div>
+</div>
+<script>
+/* ---------- Gate: needs Golden Ticket + Pre-Individuals + Kai. Add ?dev to skip. ---------- */
+(function () {
+  if (new URLSearchParams(location.search).has("dev")) return;
+  let ach = {};
+  try { ach = JSON.parse(localStorage.getItem("achievements") || "{}"); } catch (e) {}
+  const ok = localStorage.getItem("goldenTicketBought") === "true" && ach.preIndividuals &&
+             sessionStorage.getItem("playerCharacter") === "Kai";
+  if (!ok) location.replace("shop.html");
+})();
+
+/* ---------- Config ---------- */
+const RETURN_TO = "PlayableChar.html";   // where you go after beating the level
+const DEATH_TO = "shop.html";            // where you get kicked to on death
+const MAP_ROWS = [  // # wall, % alt wall, P start, d dog (20 total), K Kai
+"####################",
+"#P.....#..d....d...#",
+"#......#....d......#",
+"#...d..#....##..d..#",
+"#......#....##..d..#",
+"###.####....d......#",
+"#....d........d....#",
+"#...d......%%%...d.#",
+"#..........%.%..d..#",
+"####.#######.%######",
+"#......#....d......#",
+"#..d...#.....d.....#",
+"#......#..d.....d..#",
+"#...d.......#..d...#",
+"#..d........#.....K#",
+"####################"];
+const DOG_HP = 3, DOG_SPEED = 1.7, DOG_BITE = 8, PLAYER_SPEED = 3.2, PUMP_TIME = 0.85;
+const MOUSE_SENS = 0.0012, ARROW_TURN = 1.6;
+const BLAST_VOL = 0.35, MUSIC_VOL = 0.35;
+const BLAST_TIME = 0.3, SHAKE_PX = 3, BRIGHT = 0.22;  // shot animation: length (s), shake strength, brightness boost
+const BLOOD_FADE_DELAY = 5, BLOOD_FADE_TIME = 4; // blood stays visible, then fades over this many seconds
+
+/* ---------- Setup ---------- */
+const cv = document.getElementById("c"), ctx = cv.getContext("2d");
+const W = cv.width, H = cv.height;
+const $ = (id) => document.getElementById(id);
+const grid = MAP_ROWS.map((r) => [...r]);
+let px, py, dx, dy, plx, ply, hp, dogs, kai, state, pump, blast, bob, zbuf = new Array(W);
+
+function sprite(emoji) {
+  const s = document.createElement("canvas"); s.width = s.height = 128;
+  const g = s.getContext("2d"); g.font = "100px serif"; g.textAlign = "center"; g.textBaseline = "middle";
+  g.fillText(emoji, 64, 70); return s;
+}
+const SPR = { dog: sprite("🐕"), blood: sprite("🩸"), kai: sprite("🧍") };
+const kaiImg = new Image();   // swaps in the real Kai if the asset exists
+kaiImg.onload = () => { const g = SPR.kai.getContext("2d"); g.clearRect(0,0,128,128); g.drawImage(kaiImg, 0, 0, 128, 128); };
+kaiImg.src = "assets/chars/Kai-idle.gif";
+
+const gunImg = new Image();
+gunImg.src = "assets/fpsshotgun.png";
+const blastImg = new Image();
+blastImg.src = "assets/shotgunblast.png";
+
+const puddleImg = new Image();   // replaces the blood emoji once loaded (trimmed, sits on the floor)
+puddleImg.onload = () => {
+  const iw = puddleImg.naturalWidth, ih = puddleImg.naturalHeight;
+  let x0 = 0, y0 = 0, bw = iw, bh = ih;
+  try {  // trim transparent padding (blocked when opened from file://, then it just uses the full image)
+    const t = document.createElement("canvas"); t.width = iw; t.height = ih;
+    const tg = t.getContext("2d"); tg.drawImage(puddleImg, 0, 0);
+    const d = tg.getImageData(0, 0, iw, ih).data;
+    let x1 = 0, y1 = 0; x0 = iw; y0 = ih;
+    for (let y = 0; y < ih; y++) for (let x = 0; x < iw; x++) if (d[(y * iw + x) * 4 + 3] > 10) {
+      if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+    }
+    bw = x1 - x0 + 1; bh = y1 - y0 + 1;
+  } catch (e) { x0 = 0; y0 = 0; bw = iw; bh = ih; }
+  const h = 128 * bh / bw;
+  const g = SPR.blood.getContext("2d"); g.clearRect(0, 0, 128, 128);
+  g.drawImage(puddleImg, x0, y0, bw, bh, 0, 128 - h, 128, h);
+};
+puddleImg.onerror = () => console.warn("bloodpuddle.png not found at assets/bloodpuddle.png");
+puddleImg.src = "assets/bloodpuddle.png";
+
+function reset() {
+  dogs = []; kai = null; hp = 100; pump = 0; blast = 0; bob = 0; state = "play";
+  grid.forEach((row, y) => row.forEach((ch, x) => {
+    if (ch === "P") { px = x + .5; py = y + .5; }
+    if (ch === "d") dogs.push({ x: x + .5, y: y + .5, hp: DOG_HP, bite: 0, alive: true });
+    if (ch === "K") kai = { x: x + .5, y: y + .5, on: false };
+  }));
+  dx = 1; dy = 0; plx = 0; ply = 0.66;
+}
+const solid = (x, y) => { const c = grid[Math.floor(y)]?.[Math.floor(x)]; return c === "#" || c === "%"; };
+
+/* ---------- Audio ---------- */
+const blastSfx = new Audio("assets/shotgunblast.mp3");
+const bgm = new Audio("assets/caravan.mp3");
+bgm.loop = true; bgm.volume = MUSIC_VOL;
+function startMusic() { if (bgm.paused) bgm.play().catch(() => {}); }
+startMusic();  // may get blocked by the browser; the first key/click retries it
+function boom() {
+  const a = blastSfx.cloneNode(); a.volume = BLAST_VOL; a.play().catch(() => {});
+}
+
+/* ---------- Input ---------- */
+const keys = {};
+addEventListener("keydown", (e) => { keys[e.code] = true; startMusic(); if (e.code === "Space") shoot(); });
+addEventListener("keyup", (e) => { keys[e.code] = false; });
+cv.addEventListener("click", () => { startMusic(); cv.requestPointerLock?.(); shoot(); });
+document.addEventListener("mousemove", (e) => { if (document.pointerLockElement === cv) turn(e.movementX * MOUSE_SENS); });
+function turn(a) {
+  const c = Math.cos(a), s = Math.sin(a);
+  [dx, dy] = [dx * c - dy * s, dx * s + dy * c];
+  [plx, ply] = [plx * c - ply * s, plx * s + ply * c];
+}
+
+/* ---------- Raycasting ---------- */
+function castDist(ax, ay) {  // plain distance to nearest wall along a direction
+  let t = 0; while (t < 30) { t += 0.05; if (solid(px + ax * t, py + ay * t)) return t; } return 30;
+}
+
+function drawWorld() {
+  ctx.fillStyle = "#1c1014"; ctx.fillRect(0, 0, W, H / 2);
+  ctx.fillStyle = "#2b2420"; ctx.fillRect(0, H / 2, W, H / 2);
+  for (let x = 0; x < W; x++) {
+    const cam = 2 * x / W - 1, rx = dx + plx * cam, ry = dy + ply * cam;
+    let mx = Math.floor(px), my = Math.floor(py);
+    const ddx = Math.abs(1 / rx), ddy = Math.abs(1 / ry);
+    let sx = rx < 0 ? -1 : 1, sy = ry < 0 ? -1 : 1;
+    let sdx = (rx < 0 ? px - mx : mx + 1 - px) * ddx, sdy = (ry < 0 ? py - my : my + 1 - py) * ddy;
+    let side = 0, hit = 0;
+    while (!hit) {
+      if (sdx < sdy) { sdx += ddx; mx += sx; side = 0; } else { sdy += ddy; my += sy; side = 1; }
+      const c = grid[my]?.[mx]; if (c === "#" || c === "%" || c === undefined) hit = c || "#";
+    }
+    const dist = side === 0 ? sdx - ddx : sdy - ddy; zbuf[x] = dist;
+    const h = H / dist, top = (H - h) / 2;
+    const wx = (side === 0 ? py + dist * ry : px + dist * rx) % 1;
+    const brick = (Math.floor(wx * 8) % 2) ? 0.9 : 1;
+    const lit = Math.min(1, 1.6 / (1 + dist * 0.35)) * (side ? 0.75 : 1) * brick;
+    const base = hit === "%" ? [90, 70, 130] : [150, 55, 40];
+    ctx.fillStyle = `rgb(${base[0] * lit | 0},${base[1] * lit | 0},${base[2] * lit | 0})`;
+    ctx.fillRect(x, top, 1, h);
+  }
+}
+
+function drawSprites() {
+  const list = [...dogs.filter((d) => d.alive || d.bloodAge < BLOOD_FADE_DELAY + BLOOD_FADE_TIME).map((d) => ({ ...d, img: d.alive ? SPR.dog : SPR.blood, sc: d.alive ? 0.7 : 0.6, alpha: d.alive ? 1 : Math.max(0, 1 - Math.max(0, d.bloodAge - BLOOD_FADE_DELAY) / BLOOD_FADE_TIME) }))];
+  if (kai && kai.on) list.push({ x: kai.x, y: kai.y, img: SPR.kai, sc: 0.9 });
+  list.forEach((s) => (s.d = (s.x - px) ** 2 + (s.y - py) ** 2));
+  list.sort((a, b) => b.d - a.d).forEach((s) => {
+    const rx = s.x - px, ry = s.y - py, inv = 1 / (plx * dy - dx * ply);
+    const tx = inv * (dy * rx - dx * ry), ty = inv * (-ply * rx + plx * ry);
+    if (ty <= 0.2) return;
+    const sz = Math.abs(H / ty) * s.sc, cx = (W / 2) * (1 + tx / ty);
+    const y0 = H / 2 + (H / ty) * 0.5 - sz;
+    ctx.globalAlpha = s.alpha;
+    for (let x = Math.max(0, Math.floor(cx - sz / 2)); x < Math.min(W, cx + sz / 2); x++) {
+      if (ty >= zbuf[x]) continue;
+      ctx.drawImage(s.img, ((x - (cx - sz / 2)) / sz) * 128, 0, 1, 128, x, y0, 1, sz);
+    }
+    ctx.globalAlpha = 1;
+  });
+}
+
+const ease = (x) => x * x * (3 - 2 * x);
+function shotEnv() {  // 0 -> 1 -> 0, eased in and out
+  if (blast <= 0) return 0;
+  const p = 1 - blast / BLAST_TIME;
+  return p < 0.2 ? ease(p / 0.2) : 1 - ease((p - 0.2) / 0.8);
+}
+
+function drawGun(env) {
+  const b = Math.sin(bob) * 6, k = pump > 0 ? Math.sin((pump / PUMP_TIME) * Math.PI) * 30 : 0;
+  if (gunImg.complete && gunImg.naturalWidth) {
+    const gw = 340, gh = gw * gunImg.naturalHeight / gunImg.naturalWidth;
+    const gx = W / 2 - gw / 2 + b, gy = H - gh + 10 + Math.abs(b) + k;
+    ctx.globalAlpha = 1 - env; ctx.drawImage(gunImg, gx, gy, gw, gh);
+  }
+  if (env > 0 && blastImg.complete && blastImg.naturalWidth) {
+    const bw = 320, bh = bw * blastImg.naturalHeight / blastImg.naturalWidth;
+    const bx = W / 2 - bw / 2 + b, by = H - bh + 10 + Math.abs(b) + k * 0.5;
+    ctx.globalAlpha = env; ctx.drawImage(blastImg, bx, by, bw, bh);
+  }
+  ctx.globalAlpha = 1;
+  ctx.fillStyle = "#fff"; ctx.fillRect(W / 2 - 1, H / 2 - 6, 2, 12); ctx.fillRect(W / 2 - 6, H / 2 - 1, 12, 2);
+}
+
+/* ---------- Gameplay ---------- */
+function shoot() {
+  if (state !== "play" || pump > 0) return;
+  pump = PUMP_TIME; blast = BLAST_TIME; boom();
+  dogs.forEach((d) => {
+    if (!d.alive) return;
+    const rx = d.x - px, ry = d.y - py, dist = Math.hypot(rx, ry);
+    const ang = Math.atan2(dx * ry - dy * rx, dx * rx + dy * ry);
+    if (Math.abs(ang) > Math.atan(0.55 / dist)) return;           // shotgun spread
+    if (castDist(rx / dist, ry / dist) < dist) return;            // wall in the way
+    d.hp -= dist < 3 ? 3 : dist < 6 ? 2 : 1; d.hit = 0.15;
+    if (d.hp <= 0) { d.alive = false; d.bloodAge = 0; }
+  });
+}
+
+function tryMove(o, mx, my, r = 0.25) {
+  if (!solid(o.x + mx + Math.sign(mx) * r, o.y)) o.x += mx;
+  if (!solid(o.x, o.y + my + Math.sign(my) * r)) o.y += my;
+}
+
+function update(t) {
+  if (state !== "play") return;
+  pump = Math.max(0, pump - t); blast = Math.max(0, blast - t);
+  const f = (keys.KeyW ? 1 : 0) - (keys.KeyS ? 1 : 0), s = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0);
+  const me = { x: px, y: py };
+  tryMove(me, (dx * f + plx * s) * PLAYER_SPEED * t, (dy * f + ply * s) * PLAYER_SPEED * t);
+  px = me.x; py = me.y; if (f || s) bob += t * 9;
+  turn(((keys.ArrowRight ? 1 : 0) - (keys.ArrowLeft ? 1 : 0)) * ARROW_TURN * t);
+
+  dogs.forEach((d) => {
+    if (!d.alive) { d.bloodAge = (d.bloodAge || 0) + t; return; }
+    const rx = px - d.x, ry = py - d.y, dist = Math.hypot(rx, ry);
+    d.bite = Math.max(0, d.bite - t);
+    if (dist < 9 && dist > 0.6) tryMove(d, (rx / dist) * DOG_SPEED * t, (ry / dist) * DOG_SPEED * t, 0.3);
+    if (dist <= 0.8 && d.bite === 0) {
+      d.bite = 0.8; hp -= DOG_BITE; $("hurt").style.opacity = 0.5; setTimeout(() => ($("hurt").style.opacity = 0), 150);
+    }
+  });
+
+  const left = dogs.filter((d) => d.alive).length;
+  if (hp <= 0) {
+    state = "dead"; $("msg").textContent = "YOU GOT DOGGED";
+    setTimeout(() => { location.href = DEATH_TO; }, 1500);
+  }
+  if (left === 0 && kai && !kai.on) { kai.on = true; }
+  $("top").textContent = left ? `DOGS LEFT: ${left}` : "";
+  $("hp").textContent = `HP ${Math.max(0, hp)}`;
+  if (kai && kai.on && Math.hypot(kai.x - px, kai.y - py) < 1.4) finish();
+}
+
+function finish() {
+  state = "done"; localStorage.setItem("zhiynlCleared", "true");
+  $("msg").innerHTML = "KAI: nice.";
+  setTimeout(() => { $("msg").innerHTML = "ZHIYNL JOINS THE PARTY"; }, 1800);
+  setTimeout(() => { document.body.style.transition = "opacity .8s"; document.body.style.opacity = 0; }, 3400);
+  setTimeout(() => { location.href = RETURN_TO; }, 4300);
+}
+
+let last = performance.now();
+function loop(now) {
+  const t = Math.min(0.05, (now - last) / 1000); last = now;
+  update(t);
+  const env = shotEnv();
+  ctx.save();
+  if (env > 0) {  // subtle shake (slight zoom hides the edges)
+    ctx.translate(W / 2 + (Math.random() * 2 - 1) * SHAKE_PX * env, H / 2 + (Math.random() * 2 - 1) * SHAKE_PX * env);
+    ctx.scale(1.02, 1.02); ctx.translate(-W / 2, -H / 2);
+  }
+  drawWorld(); drawSprites();
+  ctx.restore();
+  if (env > 0) {  // brightness bump
+    ctx.globalCompositeOperation = "lighter";
+    ctx.fillStyle = `rgba(255,190,110,${BRIGHT * env})`; ctx.fillRect(0, 0, W, H);
+    ctx.globalCompositeOperation = "source-over";
+  }
+  drawGun(env);
+  requestAnimationFrame(loop);
+}
+reset(); requestAnimationFrame(loop);
+</script>
+</body>
+</html>

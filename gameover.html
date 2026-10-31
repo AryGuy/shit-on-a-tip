@@ -34,53 +34,63 @@
       margin-bottom: 30px;
       user-select: none;
     }
+
+    /* buttons match the rest of the game (nav-btn style) */
+    .btn-col {
+      margin-top: 20px;
+      display: inline-flex;
+      flex-direction: column;
+      gap: 20px;
+    }
     button {
       font-family: 'Press Start 2P', cursive;
-      padding: 15px 40px;
-      font-size: 14px;
-      background: #ba732a;
-      border: none;
+      width: 320px;
+      padding: 20px 40px;
+      font-size: 0.65em;
+      background-color: #ba732a;
+      border: 2px solid white;
       color: black;
       cursor: pointer;
       border-radius: 0;
-      transition: background 0.2s ease;
+      box-shadow: 0 0 0 3px black;
+      transition: transform 0.1s ease, background 0.3s ease;
       user-select: none;
     }
     button:hover {
-      background: #ffbe4d;
+      background-color: #ffbe4d;
+      transform: scale(1.04);
     }
-    audio {
-      display: none;
-    }
-    .achievement-popup {
-    position: fixed;
-    /* Use the initial off-screen position from your old code to allow for the slide-in */
-    top: -100px; 
-    left: 50%;
-    transform: translateX(-50%);
-    background-color: white;
-    color: black;
-    padding: 20px;
-    font-size: 10px;
-    font-family: 'Press Start 2P', cursive;
-    border: 3px solid #ba732a;
-    box-shadow: 0 0 0 3px black;
-    opacity: 0;
-    pointer-events: none;
-    /* ADDED: Transition for both top (slide) and opacity (fade) */
-    transition: top 0.6s ease, opacity 0.4s ease; 
-    z-index: 999999;
-    word-wrap: break-word;
-    line-height: 1.2em;
-    text-align: center;
-    width: 600px;
-    max-width: 80%;
-}
 
-/* This .show class is now redundant for the slide functionality, but can remain if you want to use it for visibility only */
-.achievement-popup.show {
-    opacity: 1;
-}
+    audio { display: none; }
+
+    #fade-overlay {
+      position: fixed; inset: 0; background: #000; opacity: 0;
+      pointer-events: none; z-index: 99999; transition: opacity 0.5s ease;
+    }
+    #fade-overlay.active { opacity: 1; pointer-events: all; }
+
+    .achievement-popup {
+      position: fixed;
+      top: -100px;
+      left: 50%;
+      transform: translateX(-50%);
+      background-color: white;
+      color: black;
+      padding: 20px;
+      font-size: 10px;
+      font-family: 'Press Start 2P', cursive;
+      border: 3px solid #ba732a;
+      box-shadow: 0 0 0 3px black;
+      opacity: 0;
+      pointer-events: none;
+      transition: top 0.6s ease, opacity 0.4s ease;
+      z-index: 999998;
+      word-wrap: break-word;
+      line-height: 1.2em;
+      text-align: center;
+      width: 600px;
+      max-width: 80%;
+    }
   </style>
 </head>
 <body>
@@ -88,136 +98,109 @@
   <p>FINAL SCORE: <span id="final-score">0</span></p>
   <p id="coin-reward-details"></p>
 
-  <div style="margin-top:20px; gap:10px; display:inline-flex; flex-direction: column;">
-    <button onclick="location.href='selection.html'">Try again?</button>
-    <button onclick="location.href='index.html'">Main Menu</button>
+  <div class="btn-col">
+    <button data-go="game.html">Play Again</button>
+    <button data-go="selection.html">Change Shyts</button>
+    <button data-go="index.html">Main Menu</button>
   </div>
 
   <div id="achievement-popup" class="achievement-popup"></div>
+  <div id="fade-overlay"></div>
 
   <audio id="badending-sound" src="assets/badending.mp3" preload="auto"></audio>
   <audio id="moyai-sound" src="assets/songs/moyai.mp3" preload="auto"></audio>
   <audio id="achievement-sound" src="achievement.mp3" preload="auto"></audio>
 
   <script>
-    const score = parseInt(sessionStorage.getItem('lastScore') || 0);
-    document.getElementById('final-score').textContent = score;
-    const h1 = document.querySelector("h1");
+  (() => {
+    "use strict";
+
+    // game.js already paid the coins; this page only displays the result
+    const num = k => Math.max(0, parseInt(sessionStorage.getItem(k) || "0", 10) || 0);
+    const score = num("lastScore");
+    const coinsEarned = num("lastCoins");   // what was actually added to the wallet
+    const mult = Math.max(1, num("lastMult")); // the real multiplier used (upgrades stack)
+    const currentChar = sessionStorage.getItem("playerCharacter");
+
+    document.getElementById("final-score").textContent = score;
+    document.getElementById("coin-reward-details").textContent = mult > 1
+      ? `Total Coins Received: ${coinsEarned} (x${mult} Mult)`
+      : `Total Coins Received: ${coinsEarned}`;
 
     function showAchievement(name) {
-      const popup = document.getElementById('achievement-popup');
+      const popup = document.getElementById("achievement-popup");
       popup.textContent = `Achievement Unlocked: ${name}`;
-      const sound = document.getElementById('achievement-sound');
+      const sound = document.getElementById("achievement-sound");
       sound.currentTime = 0;
       sound.play().catch(() => {});
-
       popup.style.top = "50px";
       popup.style.opacity = 1;
-      setTimeout(() => {
-        popup.style.top = "-100px";
-        popup.style.opacity = 0;
-      }, 3000);
+      setTimeout(() => { popup.style.top = "-100px"; popup.style.opacity = 0; }, 3000);
     }
 
-    // Kj death check
-if (sessionStorage.getItem("kjDeath") === "true") {
-    const h1 = document.querySelector("h1");
-    h1.textContent = "You straight up died from a heart attack";
-
-    // Award achievement
-    // 1. CHANGE: Load achievements as an OBJECT {}
-    let unlocked = JSON.parse(localStorage.getItem("achievements") || "{}"); 
-    
-    const achievementKey = "againstallodds"; 
-
-    // 2. Check if the key is NOT already unlocked in the object
-    if (!unlocked[achievementKey]) { 
-        // 3. Set the key to "new" to unlock it and trigger the pulse on achievements.html
-        unlocked[achievementKey] = "new"; 
-        
-        // 4. Save the achievement OBJECT back to localStorage
-        localStorage.setItem("achievements", JSON.stringify(unlocked));
-        
-        // Show the popup on the current page
-        showAchievement("Against All Odds");
+    // Kj heart attack
+    if (sessionStorage.getItem("kjDeath") === "true") {
+      document.querySelector("h1").textContent = "You straight up died from a heart attack";
+      if (currentChar === "Kj") {
+        const unlocked = JSON.parse(localStorage.getItem("achievements") || "{}");
+        if (!unlocked.againstallodds) {
+          unlocked.againstallodds = "new";
+          localStorage.setItem("achievements", JSON.stringify(unlocked));
+          showAchievement("Against All Odds");
+        }
+      }
+      sessionStorage.removeItem("kjDeath");
     }
 
-    sessionStorage.removeItem("kjDeath");
-}
+    // death music
+    window.addEventListener("load", () => {
+      let soundEl;
+      if (currentChar === "Kj") {
+        soundEl = new Audio("assets/songs/furelise.mp3");
+      } else if (currentChar === "Dennis") {
+        soundEl = new Audio("assets/songs/chingcheng.mp3");
+      } else if (currentChar === "Kai") {
+        soundEl = new Audio("assets/songs/ticktock.mp3");
+      } else {
+        const isBad = sessionStorage.getItem("badEnding") === "true";
+        soundEl = document.getElementById(isBad ? "badending-sound" : "moyai-sound");
+      }
+      soundEl.volume = 0.7;
+      soundEl.play().catch(() => {});
+      document.addEventListener("click", () => {
+        if (soundEl.paused) soundEl.play().catch(() => {});
+      });
+      sessionStorage.removeItem("badEnding");
+    });
 
-    // Function to get coin multiplier based on upgrades
-    function getCoinMultiplier() {
-      let multiplier = 1;
-      if (localStorage.getItem("upgrade_KillGov") === "true") return 10;
-      if (localStorage.getItem("upgrade_MoneyMachine") === "true") return 5;
-      if (localStorage.getItem("upgrade_TaxEvasion") === "true") return 2;
-      return multiplier;
-    }
+    // buttons
+    let targets = [];
+    try { targets = JSON.parse(sessionStorage.getItem("chosenTargets") || "[]"); } catch {}
 
-    const detailsEl = document.getElementById("coin-reward-details");
-    const alreadyRewarded = sessionStorage.getItem("coinsRewarded");
-    const multiplier = getCoinMultiplier();
-    const rewardedCoins = score * multiplier;
-
-    if (!alreadyRewarded) {
-      let coins = parseInt(localStorage.getItem("coins")) || 0;
-      coins += rewardedCoins;
-      localStorage.setItem("coins", coins);
-      sessionStorage.setItem("coinsRewarded", "true");
-    }
-
-    detailsEl.textContent = multiplier > 1
-      ? `Total Coins Received: ${rewardedCoins} (x${multiplier} Mult)`
-      : `Total Coins Received: ${rewardedCoins}`;
-
-    window.addEventListener('load', () => {
-  const currentChar = sessionStorage.getItem("playerCharacter"); // ← use this
-
-  let soundEl;
-
-  if (currentChar === "Kj") {
-    // Kj death music
-    soundEl = new Audio('assets/songs/furelise.mp3');
-  } else {
-    const isBad = sessionStorage.getItem("badEnding") === "true";
-    soundEl = isBad
-      ? document.getElementById('badending-sound')
-      : document.getElementById('moyai-sound');
-  }
-
-  soundEl.volume = 0.7;
-
-  // Play immediately, retry on click if blocked
-  const playSound = () => {
-    soundEl.play().catch(() => {});
-  };
-
-  playSound();
-
-  document.addEventListener("click", () => {
-    if (soundEl.paused) soundEl.play().catch(() => {});
-  });
-
-  sessionStorage.removeItem("badEnding");
-});
-
-    const buttons = document.querySelectorAll('button');
-    const hoverSound = new Audio('assets/buttonhover.mp3');
-    const clickSound = new Audio('assets/buttonclick.mp3');
+    const hoverSound = new Audio("assets/buttonhover.mp3");
+    const clickSound = new Audio("assets/buttonclick.mp3");
     hoverSound.volume = 0.5;
     clickSound.volume = 0.7;
 
-    buttons.forEach(btn => {
-      btn.addEventListener('mouseenter', () => {
+    let leaving = false;
+    document.querySelectorAll("button[data-go]").forEach(btn => {
+      btn.addEventListener("mouseenter", () => {
         hoverSound.currentTime = 0;
         hoverSound.play().catch(() => {});
       });
-
-      btn.addEventListener('click', () => {
+      btn.addEventListener("click", () => {
+        if (leaving) return;
+        leaving = true;
+        let url = btn.dataset.go;
+        if (url === "game.html" && (!Array.isArray(targets) || targets.length !== 3)) url = "selection.html";
         clickSound.currentTime = 0;
         clickSound.play().catch(() => {});
+        document.documentElement.style.overflow = "hidden";
+        document.getElementById("fade-overlay").classList.add("active");
+        setTimeout(() => { window.location.href = url; }, 500);
       });
     });
+  })();
   </script>
 </body>
 </html>
