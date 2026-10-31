@@ -287,7 +287,7 @@ talkBtn.addEventListener("click", () => {
   convoBox.style.display = isOpen ? "none" : "block";
 });
 
-/* ---- Backyard intro: shop music dies, caravan.mp3 slowly fades in, Zhiynl walks off ---- */
+/* ---- Backyard intro: shop music dies, DontStop.m4a slowly fades in, Zhiynl walks off ---- */
 
 const CARAVAN_VOL      = 0.35;  // matches MUSIC_VOL in dogkilling.html
 const SHOP_FADE_OUT_MS = 1200;
@@ -314,7 +314,7 @@ function startCaravanCrossfade() {
     if (a && !a.paused) fadeVolume(a, 0, SHOP_FADE_OUT_MS, () => a.pause());
   });
 
-  caravanMusic = new Audio("assets/caravan.mp3");
+  caravanMusic = new Audio("assets/songs/DontStop.m4a");
   caravanMusic.loop = true;
   caravanMusic.volume = 0;
   caravanMusic.muted = musicMuted;

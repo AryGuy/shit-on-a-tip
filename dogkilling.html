@@ -789,7 +789,7 @@ const solid = (x, y) => {
 
 /* ---------- Audio ---------- */
 const blastSfx = new Audio("assets/shotgunblast.mp3");
-const bgm = new Audio("assets/caravan.mp3");
+const bgm = new Audio("assets/songs/DontStop.m4a");
 
 bgm.loop = true;
 bgm.preload = "auto";
@@ -811,7 +811,7 @@ bgm.addEventListener("playing", () => { musicPlaying = true; musicNote.style.dis
 bgm.addEventListener("pause", () => { musicPlaying = false; });
 bgm.addEventListener("error", () => {
   console.error("BGM load error:", bgm.error, "src:", bgm.currentSrc);
-  showMusicNote("MUSIC FAILED TO LOAD (CHECK assets/caravan.mp3)");
+  showMusicNote("MUSIC FAILED TO LOAD (CHECK assets/songs/DontStop.m4a)");
 });
 
 function startMusic() {
