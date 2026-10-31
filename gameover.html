@@ -158,9 +158,11 @@
       if (currentChar === "Kj") {
         soundEl = new Audio("assets/songs/furelise.mp3");
       } else if (currentChar === "Dennis") {
-        soundEl = new Audio("assets/songs/chingcheng.mp3");
+        soundEl = new Audio("assets/songs/boysaliar.mp3");
       } else if (currentChar === "Kai") {
         soundEl = new Audio("assets/songs/ticktock.mp3");
+      } else if (currentChar === "Zhiynl") {
+        soundEl = new Audio("assets/songs/thechainsofhell.mp3");
       } else {
         const isBad = sessionStorage.getItem("badEnding") === "true";
         soundEl = document.getElementById(isBad ? "badending-sound" : "moyai-sound");

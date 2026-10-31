@@ -298,12 +298,15 @@
     // coin reward per difficulty tier (easy = bronze strip, medium = silver, hard = gold, secret = ruby)
     const REWARDS = { easy: 100, medium: 500, hard: 1000, secret: 5000 };
 
+    // display order inside each tab: bronze, silver, gold, ruby
+    const TIER_ORDER = ["easy", "medium", "hard", "secret"];
+
     // coinCore only hands out the grant while the page is loading, so grab it now
     // and keep it around for the CLAIM buttons.
     const coinGrant = (window.shopAPI && shopAPI.claimGrant) ? shopAPI.claimGrant() : null;
 
     // tab: general | ingame | clap     diff: easy | medium | hard | secret
-    // Order here is the order shown on the page.
+    // Rows are auto-sorted by tier (bronze > silver > gold > ruby), so order here only matters within a tier.
     const defaultAchievements = {
       // GENERAL
       preIndividuals:   { tab: "general", diff: "easy", name: "Pre-Individuals", description: "Own 3 characters" },
@@ -399,7 +402,13 @@
         }
       }
 
-      Object.keys(defaultAchievements).forEach(key => {
+      // auto-arrange by tier: bronze -> silver -> gold -> ruby
+      // (sort is stable, so achievements keep their written order within a tier)
+      const sortedKeys = Object.keys(defaultAchievements).sort(
+        (a, b) => TIER_ORDER.indexOf(defaultAchievements[a].diff) - TIER_ORDER.indexOf(defaultAchievements[b].diff)
+      );
+
+      sortedKeys.forEach(key => {
         const ach = defaultAchievements[key];
         const list = document.querySelector(`[data-list="${ach.tab}"]`);
         if (!list) return;

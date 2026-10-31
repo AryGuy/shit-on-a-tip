@@ -29,6 +29,17 @@ const SFX = "assets/soundfx/";
 // Reveal++ card: a special card (no score, no streak) that gives reveals when clapped
 const REVEAL_PLUS_CHANCE = 0.10;   // chance a (non-STD) card is a Reveal++ card
 const REVEAL_PLUS_GAIN   = 1;      // reveals gained on clap (passives can adjust via adjustRevealGain)
+
+// Timer multiplier: surviving longer pays more.  coins = score x timer mult x shop mult
+const TIMER_MULT_SECONDS_PER_STEP = 120;  // +1.0x for every 2:00 on the timer
+const TIMER_MULT_MAX   = 10;              // cap, so idling can't farm an infinite multiplier
+const REVEAL_TIME_BONUS = 2;              // seconds added to the timer per reveal
+const TIMER_TICK_MS    = 100;
+
+// Streak tiers: [streak needed, score multiplier], passives can add more (see Kai)
+const BASE_STREAK_TIERS = [[20, 5], [10, 4], [5, 3], [3, 2]];
+const STREAK_BOOST_GRACE_MS = 5000;       // a streak set by a passive event lasts this long before it needs a clap
+const ANY_LANE = "*";                     // streakSide value meaning "the next clap continues the streak on any lane"
 const deathSounds = {
   Andy: SFX + "death_andy.mp3",
   Sai: SFX + "death_sai.mp3",
@@ -145,6 +156,7 @@ let streakSide = null;
 let streakCount = 0;
 let streakPopupTimeout = null;
 let streakTimeout = null;
+let streakBoosted = false;   // streak was set by a passive event, so it doesn't count toward Momentum
 
 const streakPopup = document.getElementById("streak-popup");
 window.addEventListener('load', () => {
@@ -155,21 +167,42 @@ window.addEventListener('load', () => {
   }));
 });
 
-function getStreakMultiplier(count) {
-  if (count >= 20) return 5;
-  if (count >= 10) return 4;
-  if (count >= 5) return 3;
-  if (count >= 3) return 2;
-  return 1;
+function getStreakTiers() {
+  const extra = hook("extraStreakTiers");
+  const tiers = Array.isArray(extra) ? BASE_STREAK_TIERS.concat(extra) : BASE_STREAK_TIERS;
+  return tiers.slice().sort((a, b) => b[0] - a[0]);   // highest first
 }
 
-function refreshStreakTimeout() {
+function getStreakMultiplier(count) {
+  const tier = getStreakTiers().find(([need]) => count >= need);
+  return tier ? tier[1] : 1;
+}
+
+// streak multiplier after the passive has had its say (e.g. Kai's boost)
+function currentStreakMultiplier(count, c = null) {
+  const mult = getStreakMultiplier(count);
+  const boosted = hook("adjustStreakMultiplier", c, mult);
+  return Number.isFinite(boosted) ? boosted : mult;
+}
+
+function refreshStreakTimeout(ms = 2000) {
   if (streakTimeout) clearTimeout(streakTimeout);
 
   streakTimeout = setTimeout(() => {
     streakSide = null;
     streakCount = 0;
-  }, 2000);
+    streakBoosted = false;
+  }, ms);
+}
+
+// Jump the streak to the highest tier. The next clap keeps it going on either lane.
+function setStreakToMax() {
+  if (runEnded) return;
+  streakCount = Math.max(streakCount, getStreakTiers()[0][0]);
+  streakSide = ANY_LANE;
+  streakBoosted = true;
+  refreshStreakTimeout(STREAK_BOOST_GRACE_MS);
+  showStreakPopup(streakCount, currentStreakMultiplier(streakCount));
 }
 
 const kaiStreakSound = new Audio(SFX + "kaistreakcrunch.mp3");
@@ -285,6 +318,31 @@ function shakeScreen(isHeavy) {
   }, 200);
 }
 
+// ===== Protection (shop item): negates one game over, then is used up =====
+const PROTECTION_KEY = "protectionEquipped";
+
+function showProtectionVignette() {
+  const v = document.createElement("div");
+  v.className = "protection-vignette";
+  document.body.appendChild(v);
+  void v.offsetWidth;                       // flush so the fade-in runs
+  v.classList.add("active");
+  setTimeout(() => v.classList.remove("active"), 450);
+  setTimeout(() => v.remove(), 1200);
+}
+
+// Returns true if a Protection was equipped (and has now been spent).
+function consumeProtection() {
+  if (localStorage.getItem(PROTECTION_KEY) !== "true") return false;
+  localStorage.removeItem(PROTECTION_KEY);
+
+  const pop = new Audio(SFX + "cpop.mp3");
+  pop.play().catch(() => {});
+  showProtectionVignette();
+  shakeScreen(false);                       // light shake
+  return true;
+}
+
 function playDeathSound() {
   const path = deathSounds[currentChar] || defaultDeathSound;
   const deathAudio = new Audio(path);
@@ -380,7 +438,9 @@ function showCard(div, profile) {
 }
 
 function getRandomProfile(allowSpecial = true) {
-  const stdChance = hardModeActive ? 0.4 : 0.10;
+  let stdChance = hardModeActive ? 0.4 : 0.10;
+  const adjustedStd = hook("adjustSTDChance", stdChance);   // passives can raise/lower Lucy/Sans odds
+  if (Number.isFinite(adjustedStd)) stdChance = Math.max(0, Math.min(1, adjustedStd));
 
   if (Math.random() < stdChance) {
     return Math.random() < 0.5
@@ -398,9 +458,16 @@ function getRandomProfile(allowSpecial = true) {
     if (special) return special;
   }
 
-  return profiles.filter(p => !p.isSTD)[
-    Math.floor(Math.random() * 13)
-  ];
+  // Passives can nudge normal cards toward the player's chosen targets (fine shyts)
+  const targetBoost = hook("targetSpawnBoost");
+  if (Number.isFinite(targetBoost) && targetBoost > 0 && chosenTargets.length && Math.random() < targetBoost) {
+    const name = chosenTargets[Math.floor(Math.random() * chosenTargets.length)];
+    const target = profiles.find(p => p.name === name);
+    if (target) return target;
+  }
+
+  const pool = profiles.filter(p => !p.isSTD);
+  return pool[Math.floor(Math.random() * pool.length)];
 }
 
 function resetRound() {
@@ -426,18 +493,26 @@ function resetRound() {
   hook("onRoundStart");
 }
 
-function gameOver() {
+// force = true skips Protection (used by Forfeit, which is a deliberate quit)
+function gameOver(force = false) {
   if (runEnded) return;
+  if (!force && consumeProtection()) return;
   runEnded = true;
   stopTimer();
 
-  const mult = window.shopAPI ? shopAPI.getMultiplier() : 1;
-  const coinsEarned = grant ? grant.add(score) : 0;
+  const shopMult  = window.shopAPI ? shopAPI.getMultiplier() : 1;
+  const timerMult = getTimerMultiplier();
+  // coins = score x timer multiplier x shop multiplier (the grant applies the shop multiplier itself)
+  const coinsEarned = grant ? grant.add(Math.floor(score * timerMult)) : 0;
+  const mult = Math.round(shopMult * timerMult * 100) / 100;   // combined, so score x mult ~ coins on the game over screen
 
   const redirectNow = () => {
     sessionStorage.setItem("lastScore", score);
     sessionStorage.setItem("lastCoins", coinsEarned);
     sessionStorage.setItem("lastMult", mult);
+    sessionStorage.setItem("lastShopMult", shopMult);
+    sessionStorage.setItem("lastTimerMult", timerMult);
+    sessionStorage.setItem("lastTime", Math.floor(timerSeconds));
     sessionStorage.setItem("lastRecord", score > highAtStart ? "1" : "0");
 
     setTimeout(() => {
@@ -464,23 +539,49 @@ function gameOver() {
 }
 
 const timerDisplay = document.getElementById("timer-display");
+const timerMultDisplay = document.getElementById("timer-mult");
 
-let startTime = Date.now();
-let fastForwardMultiplier = 1;
-let timerInterval = setInterval(updateTimer, 1000);
+let timerSeconds = 0;            // seconds on the timer: runs at the passive's speed, plus bonuses
+let lastTick = performance.now();
+let timerFxActive = false;       // Sai's fast-forward animation owns the clock text while true
+let timerInterval = setInterval(tickTimer, TIMER_TICK_MS);
 
-function updateTimer() {
-  const elapsed = Date.now() - startTime;
-  const totalSeconds = Math.floor(
-    (elapsed / 1000) * fastForwardMultiplier
-  );
+// passives can speed the timer up (Sai, Kai)
+function getTimeSpeed() {
+  const speed = hook("adjustTimeSpeed", 1);
+  return Number.isFinite(speed) && speed > 0 ? speed : 1;
+}
 
+function getTimerMultiplier(seconds = timerSeconds) {
+  const raw = 1 + seconds / TIMER_MULT_SECONDS_PER_STEP;
+  return Math.min(TIMER_MULT_MAX, Math.floor(raw * 100) / 100);
+}
+
+function formatTime(totalSeconds) {
   const minutes = Math.floor(totalSeconds / 60);
   const seconds = totalSeconds % 60;
+  return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
 
-  timerDisplay.textContent =
-    `${String(minutes).padStart(2, "0")}:` +
-    `${String(seconds).padStart(2, "0")}`;
+function updateTimer() {
+  if (timerMultDisplay) timerMultDisplay.textContent = `TIME x${getTimerMultiplier().toFixed(2)}`;
+  if (timerFxActive) return;
+  timerDisplay.textContent = formatTime(Math.floor(timerSeconds));
+}
+
+function tickTimer() {
+  const now = performance.now();
+  const dt = Math.min((now - lastTick) / 1000, 1);   // a throttled background tab can't bank extra time
+  lastTick = now;
+  if (runEnded) return;
+  timerSeconds += dt * getTimeSpeed();
+  updateTimer();
+}
+
+function addTime(seconds) {
+  if (runEnded || !Number.isFinite(seconds) || seconds <= 0) return;
+  timerSeconds += seconds;
+  updateTimer();
 }
 
 function stopTimer() {
@@ -490,19 +591,9 @@ function stopTimer() {
   }
 }
 
+// Sai's Glance: the stopwatch jumps ahead 5-25s (real time, so it counts toward the multiplier)
 function landStopwatchRandomly() {
-  const elapsed = Date.now() - startTime;
-  const minOffset = 5;
-  const maxOffset = 25;
-
-  const randomSeconds =
-    Math.floor(Math.random() * (maxOffset - minOffset + 1)) +
-    minOffset;
-
-  startTime =
-    Date.now() - elapsed - randomSeconds * 1000;
-
-  updateTimer();
+  addTime(Math.floor(Math.random() * 21) + 5);
 }
 
 window.addEventListener("DOMContentLoaded", () => {
@@ -518,7 +609,7 @@ window.addEventListener("DOMContentLoaded", () => {
     }
 
     if (typeof gameOver === "function") {
-      gameOver();
+      gameOver(true);
     } else {
       window.location.href = "gameover.html";
     }
@@ -537,6 +628,7 @@ revealBtn.addEventListener("click", (e) => {
   if (revealedSlots[selectedSlot]) return;
 
   playSound(revealClickSound);
+  addTime(REVEAL_TIME_BONUS);   // every reveal (including Sai's Glance) adds time
   if (hook("onReveal", selectedSlot)) return;
 
   const chosen = getProfile(selectedSlot);
@@ -553,28 +645,23 @@ revealBtn.addEventListener("click", (e) => {
 
 let stopwatchFastAnim = null;
 
+// purely visual: the clock text spins up for a moment, then snaps back to the real time
 function animateStopwatchFast(duration = 1000, speed = 50) {
   if (!timerDisplay) return;
+  if (stopwatchFastAnim) clearInterval(stopwatchFastAnim);
 
+  timerFxActive = true;
   let fakeSeconds = 0;
-  const interval = 50;
 
   stopwatchFastAnim = setInterval(() => {
     fakeSeconds += speed;
-
-    const totalSeconds = Math.floor(fakeSeconds);
-    const minutes = Math.floor(totalSeconds / 60);
-    const seconds = totalSeconds % 60;
-
-    timerDisplay.textContent =
-      `${String(minutes).padStart(2, "0")}:` +
-      `${String(seconds).padStart(2, "0")}`;
-  }, interval);
+    timerDisplay.textContent = formatTime(Math.floor(fakeSeconds));
+  }, 50);
 
   setTimeout(() => {
     clearInterval(stopwatchFastAnim);
     stopwatchFastAnim = null;
-
+    timerFxActive = false;
     updateTimer();
   }, duration);
 }
@@ -634,6 +721,12 @@ clapBtn.addEventListener("click", (e) => {
     }
 
     if (verdict !== "survive") {
+      // Protection eats the hit before any death side effects (achievements, bad ending)
+      if (consumeProtection()) {
+        finishRound(clappedSlot);
+        return;
+      }
+
       if (sawCardFirst && (chosen.name === "Lucy" || chosen.name === "Sans")) {
         unlockAchievement("tunnelVision");
       }
@@ -652,29 +745,29 @@ clapBtn.addEventListener("click", (e) => {
     }
   }
 
-  if (streakSide === clappedSlot) {
+  if (streakSide === clappedSlot || streakSide === ANY_LANE) {
     streakCount++;
+    streakSide = clappedSlot;
   } else {
     streakSide = clappedSlot;
     streakCount = 1;
+    streakBoosted = false;
   }
 
   refreshStreakTimeout();
 
-  if (streakCount >= 20) unlockAchievement("momentum");
+  if (streakCount >= 20 && !streakBoosted) unlockAchievement("momentum");
 
   let basePoints = isTarget ? 2 : 1;
   const adjusted = hook("adjustPoints", c, basePoints);
   if (Number.isFinite(adjusted)) basePoints = adjusted;
 
-  let streakMultiplier = getStreakMultiplier(streakCount);
-  const boostedStreak = hook("adjustStreakMultiplier", c, streakMultiplier);
-  if (Number.isFinite(boostedStreak)) streakMultiplier = boostedStreak;
+  const streakMultiplier = currentStreakMultiplier(streakCount, c);
   score += basePoints * streakMultiplier;
 
   hook("afterClap", c);
 
-  if ([3, 5, 10, 20].includes(streakCount)) {
+  if (getStreakTiers().some(([need]) => need === streakCount)) {
     showStreakPopup(streakCount, streakMultiplier);
   }
 
@@ -816,6 +909,9 @@ const g = {
 
   animateStopwatchFast,
   landStopwatchRandomly,
+  addTime,
+  getStreak() { return streakCount; },
+  setStreakToMax,
   shake: shakeScreen,
   gameOver
 };

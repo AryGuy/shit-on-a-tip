@@ -21,6 +21,8 @@ const CHARACTER_PRICE_NORMAL   = 500;
 const CHARACTER_PRICE_INFLATED = 1500;
 const HARD_MODE_PRICE_NORMAL   = 200;
 const HARD_MODE_PRICE_INFLATED = 1000;
+const PROTECTION_PRICE_NORMAL   = 300;
+const PROTECTION_PRICE_INFLATED = 600;
 
 const NOTICE_IMMEDIATELY = false;
 
@@ -67,6 +69,8 @@ const ITEMS = {
   "Kai":                 { cost: 500,  type: "character" },
   "Hard Mode":              { cost: 200,  type: "misc", key: "hardModeBought", line: "Well Good Fucking Luck" },
   "Golden Ticket":          { cost: 2500, type: "misc", key: "goldenTicketBought", line: "TIKY" },
+  // One-use: stays "Equipped" until the game spends it, then it can be bought again.
+  "Protection":             { cost: PROTECTION_PRICE_NORMAL, type: "misc", key: "protectionEquipped", ownedLabel: "✅ Equipped", line: "HAVE A GREAT NIGHT" },
 };
 
 const OWNED_LABEL = {
@@ -165,7 +169,7 @@ function isPriceNoticePending() {
 
 // Items affected by the price notice.
 function isPriceHiked(itemId, item) {
-  return item.type === "character" || itemId === "Hard Mode";
+  return item.type === "character" || itemId === "Hard Mode" || itemId === "Protection";
 }
 
 function getItemCost(itemId, item) {
@@ -174,6 +178,9 @@ function getItemCost(itemId, item) {
   }
   if (itemId === "Hard Mode") {
     return priceNoticeSeen() ? HARD_MODE_PRICE_INFLATED : HARD_MODE_PRICE_NORMAL;
+  }
+  if (itemId === "Protection") {
+    return priceNoticeSeen() ? PROTECTION_PRICE_INFLATED : PROTECTION_PRICE_NORMAL;
   }
   return item.cost;
 }
@@ -465,7 +472,8 @@ function findBuyButton(itemId) {
 function markOwned(button, itemId, type) {
   if (!button) return;
   button.disabled = true;
-  button.textContent = `${itemId} - ${OWNED_LABEL[type]}`;
+  const label = (ITEMS[itemId] && ITEMS[itemId].ownedLabel) || OWNED_LABEL[type];
+  button.textContent = `${itemId} - ${label}`;
   button.style.opacity = "0.5";
   button.style.cursor = "not-allowed";
 }
@@ -478,7 +486,7 @@ function isOwned(itemId, item) {
   return false; // plain consumables are never "owned"
 }
 
-/** Sync unowned hiked buttons (characters + Hard Mode): label + data-cost = current price. */
+/** Sync unowned hiked buttons (characters + Hard Mode + Protection): label + data-cost = current price. */
 function refreshPrices() {
   document.querySelectorAll(".buy-item").forEach((btn) => {
     const itemId = btn.dataset.id;

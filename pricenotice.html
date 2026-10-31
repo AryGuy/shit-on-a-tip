@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <title>It Yo Boy Zhiy Shop</title>
   <script>
-    // Bounce anyone who isn't supposed to be here. Add ?test to preview any time.
     try {
       const test = new URLSearchParams(location.search).has("test");
       const a = JSON.parse(localStorage.getItem("achievements") || "{}");
@@ -17,7 +16,6 @@
   <style>
     #hand {
       position: fixed; left: 0; top: 0;
-      /* size is set per-sprite from HAND in the script */
       z-index: 5000; pointer-events: none;
       opacity: 0; transition: opacity .3s;
       will-change: transform;
@@ -104,15 +102,7 @@
   const TEST      = new URLSearchParams(location.search).has("test");
   const NEW_PRICE = 1500;
 
-  // Per-sprite config:
-  //   size  = rendered height in px (make "wipe" bigger/smaller to taste)
-  //   ratio = image width / height (tap 350x350 = 1, wipe 350x525 = 0.667)
-  //   tip   = the point that touches things, as a fraction of the sprite (x, y)
-  //   lift  = push the hand UP by this many px. Number or function.
-  //           wipe uses a fraction of the list height, so it scales with the tab:
-  //           0.1 = up by 10% of the list, -0.1 = down by 10%.
   const HAND = {
-    // idle sprite wasn't checked, so its tip is copied from tap. Adjust if it's off.
     idle: { src: "assets/zhiynl-hand-idle.png", size: 280, ratio: 1,     tip: { x: 0.52, y: 0.69 }, lift: 0 },
     tap:  { src: "assets/zhiynl-hand-tap.png",  size: 280, ratio: 1,     tip: { x: 0.52, y: 0.69 }, lift: 0 },
     wipe: { src: "assets/zhiynl-hand-wipe.png", size: 900, ratio: 0.667, tip: { x: 0.47, y: 0.80 }, lift: () => listHeight() * 0.0 },  // comically large
@@ -150,11 +140,6 @@
     });
   }
 
-  /* ---------- Hand ----------
-     The hand is position:fixed (viewport coords), so we NEVER store pixel
-     positions. Instead the hand follows a function that re-reads the live
-     element rects every frame. Scroll, zoom, resize = it just stays glued
-     to the right spot. */
   const listHeight = () => document.querySelector("#tab-characters ul").getBoundingClientRect().height;
   let curHand = HAND.idle;
 
@@ -163,13 +148,11 @@
     curHand = h;
     hand.style.height = h.size + "px";
     hand.style.width  = h.size * h.ratio + "px";
-    // If a file is missing/broken, fall back to idle so the hand never vanishes.
     handImg.onerror = () => { handImg.onerror = null; handImg.src = HAND.idle.src; };
     handImg.src = h.src;
   }
   setHand("idle");
 
-  // Anchors: functions returning viewport coords, evaluated live.
   const spriteAnchor = () => {
     const s = sprite.getBoundingClientRect();
     return { x: s.left + s.width * 0.8, y: s.top + s.height * 0.6 };
@@ -187,9 +170,8 @@
     };
   };
 
-  let current = spriteAnchor;   // what the hand is currently following
+  let current = spriteAnchor;  
 
-  // One render loop, runs for the whole cutscene.
   (function frame() {
     const p = current();
     const h = curHand, w = h.size * h.ratio;
@@ -198,7 +180,6 @@
     requestAnimationFrame(frame);
   })();
 
-  // Glide from wherever the hand is now to a (live) target.
   function moveHand(to, ms = 600) {
     const from = current;
     const t0 = performance.now();
@@ -206,7 +187,7 @@
       current = () => {
         const k = Math.min(1, (performance.now() - t0) / ms);
         if (k >= 1) { current = to; resolve(); return to(); }
-        const e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2; // ease-in-out
+        const e = k < 0.5 ? 2 * k * k : 1 - Math.pow(-2 * k + 2, 2) / 2; 
         const a = from(), b = to();
         return { x: a.x + (b.x - a.x) * e, y: a.y + (b.y - a.y) * e };
       };
@@ -239,28 +220,22 @@
     });
   }
 
-  /* ---------- Cutscene ---------- */
   async function run() {
-    // lock everything (blocks mouse AND keyboard)
     $("shop-container").inert = true;
     $("shop-notebook").style.display = "block";
     showTab("items");
     markOwnedVisuals();
-
-    // fade in from the black the shop faded out to
     requestAnimationFrame(() => { veil.style.opacity = "0"; });
     await sleep(1000);
 
     for (const line of LINES) await say(line);
 
-    // hand emerges from Zhiynl
     current = spriteAnchor;
     setHand("idle");
     hand.style.opacity = "1";
     await sleep(300);
 
-    // 1) tap the Characters tab
-    setHand("tap");   // use the tap sprite for the whole trip so its fingertip lands on the button
+    setHand("tap");  
     await moveHand(tabAnchor("characters"), 900);
     handImg.classList.add("tap");
     playOneShot("assets/shopbuttonclick.mp3");
@@ -269,7 +244,6 @@
     await sleep(400);
     handImg.classList.remove("tap");
 
-    // 2) wipe across the whole list (giant hand)
     setHand("wipe");
     await moveHand(listAnchor("L", 0), 600);
     for (let i = 0; i < STROKES; i++) {

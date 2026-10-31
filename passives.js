@@ -52,6 +52,11 @@ const characterPassives = (() => {
     }, ANDY_STAGGER_MS);
   }
 
+  // If Andy is also one of your fine shyts his effect doubles:
+  // Sans = 10 (not 5), fine shyts = 4 (not 2)
+  const ANDY_SANS_POINTS     = 5;
+  const ANDY_FINE_SHYT_BOOST = 2;
+
   const Andy = {
     onSTDClap(g, c) {
       if (c.profile.name === "Sans") {
@@ -60,7 +65,9 @@ const characterPassives = (() => {
       }
     },
     adjustPoints(g, c, base) {
-      return c.profile.name === "Sans" ? 5 : base;
+      const boost = g.chosenTargets.includes("Andy") ? ANDY_FINE_SHYT_BOOST : 1;
+      if (c.profile.name === "Sans") return ANDY_SANS_POINTS * boost;
+      return c.isTarget ? base * boost : base;
     }
   };
 
@@ -152,9 +159,12 @@ const characterPassives = (() => {
   // ===========================================================================
   //  WIN — clapping Win raises a shield that absorbs the next 3 claps
   //        (re-clapping Win while shielded = flat bonus)
+  //        Also: Lucy/Sans show up a bit less, fine shyts a bit more.
   // ===========================================================================
   const WIN_SHIELD_CLAPS = 3;
   const WIN_CLAP_BONUS   = 10;
+  const WIN_STD_CHANCE_MULT    = 0.8;   // Lucy/Sans spawn chance x0.8 (10% -> 8%, hard mode 40% -> 32%)
+  const WIN_TARGET_SPAWN_BOOST = 0.08;  // extra chance a normal card is swapped for one of your fine shyts
 
   const shield = {
     claps: 0,
@@ -180,6 +190,14 @@ const characterPassives = (() => {
   };
 
   const Win = {
+    adjustSTDChance(g, base) {
+      return base * WIN_STD_CHANCE_MULT;
+    },
+
+    targetSpawnBoost() {
+      return WIN_TARGET_SPAWN_BOOST;
+    },
+
     onSTDClap() {
       if (shield.isActive()) {
         shield.afterClap(false);
@@ -207,6 +225,7 @@ const characterPassives = (() => {
   //        to a fine shyt if a Lucy/Sans shows up; Reveal++ cards give double
   // ===========================================================================
   const SAI_REVEAL_PLUS_MULT = 2;
+  const SAI_TIME_SPEED       = 3;   // the timer (and so the timer multiplier) runs twice as fast
 
   function saiGlance(g, selectedSlot) {
     const { left, right } = g.slots;
@@ -292,6 +311,10 @@ const characterPassives = (() => {
     // Reveal++ cards give double
     adjustRevealGain(g, c, base) {
       return base * SAI_REVEAL_PLUS_MULT;
+    },
+
+    adjustTimeSpeed(g, speed) {
+      return speed * SAI_TIME_SPEED;
     }
   };
 
@@ -303,6 +326,9 @@ const characterPassives = (() => {
   let warnedSlot = null;
 
   const KJ_IGNORE_SCORE = 5;   // score for letting a butterfly fly away
+  const KJ_TIME_BONUS     = 10;     // seconds added by the "time" event
+  const KJ_JACKPOT_CHANCE = 0.01;   // per butterfly click
+  const KJ_JACKPOT_SCORE  = 1000;
 
   function warnNextCard(g) {
     if (nextCardWarning) return;
@@ -342,6 +368,12 @@ const characterPassives = (() => {
   }
 
   function kjRandomEvent(g) {
+    if (Math.random() < KJ_JACKPOT_CHANCE) {
+      g.addScore(KJ_JACKPOT_SCORE);
+      showFloatingMessage("JACKPOT! +" + KJ_JACKPOT_SCORE + " Score!!!");
+      return;
+    }
+
     const events = [
       () => { g.addScore(5);          return "+5 Score!"; },
       () => { g.addReveals(1);        return "Extra Reveal!"; },
@@ -350,6 +382,8 @@ const characterPassives = (() => {
       () => { g.addReveals(-3);       return "-3 Reveals"; },
       () => { g.addScore(10);         return "+10 Score!"; },
       () => { g.addScore(15);         return "+15 Score!"; },
+      () => { g.addTime(KJ_TIME_BONUS); return "+" + KJ_TIME_BONUS + " Seconds!"; },
+      () => { g.setStreakToMax();     return "Streak maxed!"; },
       () => { warnNextCard(g);        return "Watch out for your next card!"; },
       () => { for (let i = 0; i < 3; i++) spawnButterfly(g); return "More butterflies!"; },
       () => {
@@ -441,13 +475,26 @@ const characterPassives = (() => {
   };
 
   // ===========================================================================
-  //  KAI — streak multiplier hits twice as hard
+  //  KAI — streak multiplier hits twice as hard. Streaks can also reach
+  //        30x / 40x / 50x, and the timer speeds up with his streak
   // ===========================================================================
   const KAI_STREAK_BOOST = 2;
+  const KAI_EXTRA_STREAK_TIERS = [[30, 6], [40, 7], [50, 8]];   // [streak, base multiplier] (before the x2 boost)
+  const KAI_TIME_SPEED_PER_STREAK = 0.05;   // +5% timer speed per streak (50 streak = 3.5x)
+  const KAI_TIME_SPEED_MAX_STREAK = 50;
 
   const Kai = {
+    extraStreakTiers() {
+      return KAI_EXTRA_STREAK_TIERS;
+    },
+
     adjustStreakMultiplier(g, c, mult) {
       return mult * KAI_STREAK_BOOST;
+    },
+
+    adjustTimeSpeed(g, speed) {
+      const streak = Math.min(g.getStreak(), KAI_TIME_SPEED_MAX_STREAK);
+      return speed * (1 + streak * KAI_TIME_SPEED_PER_STREAK);
     }
   };
 
@@ -457,7 +504,7 @@ const characterPassives = (() => {
   // ===========================================================================
   const ZHIYNL_MAX_AMMO         = 1;
   const ZHIYNL_AMMO_COST         = 5;      // score lost when clapping an ammo card
-  const ZHIYNL_AMMO_CARD_CHANCE = 0.12;   // chance a (non-STD) card is an ammo card
+  const ZHIYNL_AMMO_CARD_CHANCE = 0.14;   // chance a (non-STD) card is an ammo card
 
   const SHELL_IMG = IMG_DIR + "shotgunshell.png";
   const GUN_IMG   = IMG_DIR + "fpsshotgun.png";

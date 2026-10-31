@@ -334,3 +334,25 @@ button:active {
   0%   { opacity: 0.9; }
   100% { opacity: 0; }
 }
+
+/* ===== Protection: white vignette when it's used up ===== */
+.protection-vignette {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 9998;
+  opacity: 0;
+  transition: opacity 0.15s ease-out;
+  background: radial-gradient(
+    ellipse at center,
+    rgba(255, 255, 255, 0) 45%,
+    rgba(255, 255, 255, 0.6) 100%
+  );
+  box-shadow: inset 0 0 120px 30px rgba(255, 255, 255, 0.5);
+}
+.protection-vignette.active {
+  opacity: 1;
+}
+.protection-vignette:not(.active) {
+  transition-duration: 0.7s;   /* fade out slower than it fades in */
+}

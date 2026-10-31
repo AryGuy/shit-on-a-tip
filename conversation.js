@@ -596,8 +596,9 @@ if (sessionStorage.getItem("completedBackyard") === "true") {
     "I THINK MY SHOTGUN GON NEED FIXING"
   ];
 } else if (sessionStorage.getItem("completedPriceNotice") === "true") {
+  sessionStorage.removeItem("completedPriceNotice");   // one-time, like completedBackyard
   lines = [
-    "FAIR PRICES FOR EVERY",
+    "AY I NOT JEW OK I JUST HAVE FAMILIY TO FEED",
     "ANOTHER DAY ANOTHER INFLATION PORNO"
   ];
 } else if (sessionStorage.getItem("completedTamper") === "true") {
