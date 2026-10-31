@@ -792,6 +792,7 @@ const blastSfx = new Audio("assets/shotgunblast.mp3");
 const bgm = new Audio("assets/caravan.mp3");
 
 bgm.loop = true;
+bgm.preload = "auto";
 bgm.volume = MUSIC_VOL;
 bgm.addEventListener("loadedmetadata", () => {
   const t = parseFloat(sessionStorage.getItem("caravanResume"));
@@ -799,11 +800,38 @@ bgm.addEventListener("loadedmetadata", () => {
   sessionStorage.removeItem("caravanResume");
 }, { once: true });
 
+// small on-screen note, only shown if the browser blocks the music
+const musicNote = document.createElement("div");
+musicNote.style.cssText = "position:absolute;left:0;right:0;bottom:40px;text-align:center;font-size:8px;color:#ffbe4d;text-shadow:2px 2px #000;pointer-events:none;display:none";
+document.getElementById("wrap").appendChild(musicNote);
+function showMusicNote(t) { musicNote.textContent = t; musicNote.style.display = "block"; }
+
+let musicPlaying = false;
+bgm.addEventListener("playing", () => { musicPlaying = true; musicNote.style.display = "none"; });
+bgm.addEventListener("pause", () => { musicPlaying = false; });
+bgm.addEventListener("error", () => {
+  console.error("BGM load error:", bgm.error, "src:", bgm.currentSrc);
+  showMusicNote("MUSIC FAILED TO LOAD (CHECK assets/caravan.mp3)");
+});
+
 function startMusic() {
-  if (bgm.paused) bgm.play().catch(() => {});
+  if (musicPlaying) return;
+  const p = bgm.play();
+  if (p && p.catch) p.catch((e) => {
+    console.warn("BGM play blocked:", e.name, e.message);
+    if (e.name === "NotAllowedError") showMusicNote("CLICK OR PRESS ANY KEY FOR MUSIC");
+  });
 }
 
 startMusic();
+
+// keep retrying on any input until the song is actually playing
+["pointerdown", "mousedown", "click", "keydown", "touchstart"].forEach((ev) =>
+  addEventListener(ev, startMusic, { capture: true })
+);
+document.addEventListener("visibilitychange", () => {
+  if (!document.hidden && !musicPlaying && bgm.currentTime > 0) startMusic();
+});
 
 const stepSfx = new Audio("assets/onestep.mp3");
 const groanSfx = new Audio("assets/doggroan.mp3");
