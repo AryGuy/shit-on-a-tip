@@ -298,9 +298,12 @@
     frozenCanvas = c;
   }
 
+  // Zhiynl's gif files are lowercase on disk (zhiynl-idle.gif); GitHub Pages is case-sensitive
+  const gifName = (n) => (n === "Zhiynl" ? "zhiynl" : n);
+
   function showIdle(name) {
     unfreezeChar();
-    wardrobeChar.src = `./assets/chars/${name}-idle.gif`;
+    wardrobeChar.src = `./assets/chars/${gifName(name)}-idle.gif`;
     if (name !== "Zhiynl") return;
     const token = freezeToken;
     wardrobeChar.addEventListener("load", () => {       // start counting once the gif is actually showing
@@ -508,10 +511,10 @@
         } else if (name === "Dennis") {
           wardrobeChar.src = `./assets/chars/Dennis-idle.gif`;
         } else {
-          wardrobeChar.src = `./assets/chars/${name}-walk.gif`;
+          wardrobeChar.src = `./assets/chars/${gifName(name)}-walk.gif`;
 
           if (name !== "Sai") {
-            const idleSrc = `./assets/chars/${name}-idle.gif`;
+            const idleSrc = `./assets/chars/${gifName(name)}-idle.gif`;
             const preloadIdle = new Image();
             preloadIdle.src = idleSrc;
 
