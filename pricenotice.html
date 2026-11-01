@@ -8,7 +8,7 @@
       const test = new URLSearchParams(location.search).has("test");
       const a = JSON.parse(localStorage.getItem("achievements") || "{}");
       const pending = a.preIndividuals && localStorage.getItem("priceNoticeSeen") !== "true";
-      if (!pending && !test) location.replace("shop.html");
+      if (!pending && !test) { window.__leaving = true; location.replace("shop.html"); }
     } catch (e) {}
   </script>
   <link rel="stylesheet" href="shop.css">
@@ -76,8 +76,9 @@
             <li><button class="buy-item" data-cost="500" data-type="character" data-id="Andy" data-description='"We in Japan, why the hell we going for Chinese?"'>Andy - 500 coins</button></li>
             <li><button class="buy-item" data-cost="500" data-type="character" data-id="Sai" data-description='"Watch me destroy a 5700$ gold bar with nitric acid."'>Sai - 500 coins</button></li>
             <li><button class="buy-item" data-cost="500" data-type="character" data-id="Kj" data-description='"YOU FUCKING MMMMMOOOOONNNNNNNKKKKKKKEEEEYYYYYY"'>Kj - 500 coins</button></li>
-            <li><button class="buy-item" data-cost="500" data-type="character" data-id="Win" data-description='Hey do something'>Win - 500 coins</button></li>
+            <li><button class="buy-item" data-cost="500" data-type="character" data-id="Win" data-description='Go to sleeeeep'>Win - 500 coins</button></li>
             <li><button class="buy-item" data-cost="500" data-type="character" data-id="Dennis" data-description='"Yo rq bro I need u to get a gender reassignment plz man its urgent"'>Dennis - 500 coins</button></li>
+            <li><button class="buy-item" data-cost="500" data-type="character" data-id="Kai" data-name="Kai Furukawa" data-description='Heavy like a Brinks truck'>Kai Furukawa - 500 coins</button></li>
           </ul>
         </div>
 
@@ -85,6 +86,8 @@
           <h3>Misc:</h3>
           <ul>
             <li><button class="buy-item" data-cost="200" data-type="misc" data-id="Hard Mode" data-description="Self explanatory">Hard Mode - 200 Coins</button></li>
+            <li><button class="buy-item" data-cost="2500" data-type="misc" data-id="Golden Ticket" data-description="No need to thank me">Golden Ticket - 2500 coins</button></li>
+            <li><button class="buy-item" data-cost="300" data-type="misc" data-id="Protection" data-name="Condom" data-description="Negates your next game over">Condom - 300 coins</button></li>
           </ul>
         </div>
       </div>
@@ -100,12 +103,24 @@
   <script>
   /* ---------- Config ---------- */
   const TEST      = new URLSearchParams(location.search).has("test");
-  const NEW_PRICE = 1500;
+  const NEW_PRICE = 1500;   // characters
+  // Everything shop.js hikes once the notice is seen. Keep in sync with CHARACTER_/HARD_MODE_/PROTECTION_PRICE_INFLATED there.
+  const NEW_PRICES = { "Hard Mode": 1000, "Protection": 600 };
+
+  // "Owned" rules: mirror of the keys / labels in shop.js (ITEMS + OWNED_LABEL)
+  const OWNED_RULES = {
+    "Tax Evasion":            { key: "upgrade_TaxEvasion",   label: "✅ Activated" },
+    "Money Printing Machine": { key: "upgrade_MoneyMachine", label: "✅ Activated" },
+    "Kill The Government":    { key: "upgrade_KillGov",      label: "✅ Activated" },
+    "Hard Mode":              { key: "hardModeBought",       label: "✅ Purchased" },
+    "Golden Ticket":          { key: "goldenTicketBought",   label: "✅ Purchased" },
+    "Protection":             { key: "protectionEquipped",   label: "✅ Equipped"  },
+  };
 
   const HAND = {
     idle: { src: "assets/zhiynl-hand-idle.png", size: 280, ratio: 1,     tip: { x: 0.52, y: 0.69 }, lift: 0 },
     tap:  { src: "assets/zhiynl-hand-tap.png",  size: 280, ratio: 1,     tip: { x: 0.52, y: 0.69 }, lift: 0 },
-    wipe: { src: "assets/zhiynl-hand-wipe.png", size: 900, ratio: 0.667, tip: { x: 0.47, y: 0.80 }, lift: () => listHeight() * 0.0 },  // comically large
+    wipe: { src: "assets/zhiynl-hand-wipe.png", size: 900, ratio: 0.667, tip: { x: 0.47, y: 0.80 }, lift: 0 },  // comically large
   };
 
   const TAMPERED = sessionStorage.getItem("completedTamper") === "true";
@@ -140,7 +155,6 @@
     });
   }
 
-  const listHeight = () => document.querySelector("#tab-characters ul").getBoundingClientRect().height;
   let curHand = HAND.idle;
 
   function setHand(key) {
@@ -201,21 +215,37 @@
       .forEach((s) => s.classList.toggle("active", s.id === "tab-" + name));
   }
 
+  const nameOf = (b) => b.dataset.name || b.dataset.id;
+
+  // Same look as shop.js markOwned(), on EVERY tab (this used to cover the characters tab only)
   function markOwnedVisuals() {
-    const owned = JSON.parse(localStorage.getItem("unlockedCharacters") || "[]");
-    document.querySelectorAll('#tab-characters .buy-item').forEach((b) => {
-      if (owned.includes(b.dataset.id)) {
-        b.disabled = true;
-        b.textContent = `${b.dataset.id} - ✅ Unlocked`;
-        b.style.opacity = "0.5";
+    let unlocked = [];
+    try { unlocked = JSON.parse(localStorage.getItem("unlockedCharacters") || "[]"); } catch (e) {}
+
+    document.querySelectorAll("#shop-sections .buy-item").forEach((b) => {
+      const id = b.dataset.id;
+      let label = null;
+
+      if (b.dataset.type === "character") {
+        if (unlocked.includes(id)) label = "✅ Unlocked";
+      } else if (OWNED_RULES[id] && localStorage.getItem(OWNED_RULES[id].key) === "true") {
+        label = OWNED_RULES[id].label;
       }
+
+      if (!label) return;
+      b.disabled = true;
+      b.textContent = `${nameOf(b)} - ${label}`;
+      b.style.opacity = "0.5";
+      b.style.cursor = "not-allowed";
     });
   }
 
   function showNewPrices() {
-    document.querySelectorAll("#tab-characters .buy-item:not(:disabled)").forEach((b) => {
-      b.dataset.cost = NEW_PRICE;
-      b.textContent = `${b.dataset.id} - ${NEW_PRICE} coins`;
+    document.querySelectorAll("#shop-sections .buy-item:not(:disabled)").forEach((b) => {
+      const price = b.dataset.type === "character" ? NEW_PRICE : NEW_PRICES[b.dataset.id];
+      if (!price) return;
+      b.dataset.cost = price;
+      b.textContent = `${nameOf(b)} - ${price} coins`;
       b.classList.add("price-pop");
     });
   }
@@ -273,6 +303,7 @@
   }
 
   window.addEventListener("load", () => {
+    if (window.__leaving) return;
     run().catch((err) => {
       console.error("Cutscene crashed:", err);
       veil.style.opacity = "0";

@@ -558,20 +558,30 @@
     setTimeout(() => window.location.href = "index.html", 200);
   });
 
-  document.addEventListener('click', () => {
-    if (charMusic.paused) {
-      charMusic.volume = 0;
-      charMusic.play().then(() => {
-        let vol = 0;
-        const target = 0.4;
-        const fade = setInterval(() => {
-          vol += 0.05;
-          if (vol >= target) { vol = target; clearInterval(fade); }
-          charMusic.volume = vol;
-        }, 200);
-      }).catch(err => console.warn("Autoplay blocked:", err));
-    }
-  }, { once: true });
+  // Start music on page load. Browsers may block autoplay with sound,
+  // so if that happens, retry on the first user interaction of any kind.
+  function startMusic() {
+    if (!charMusic.paused || kaiActive) return Promise.resolve();
+    charMusic.volume = 0;
+    return charMusic.play().then(() => {
+      removeRetry();
+      let vol = 0;
+      const target = 0.4;
+      const fade = setInterval(() => {
+        vol += 0.05;
+        if (vol >= target) { vol = target; clearInterval(fade); }
+        charMusic.volume = vol;
+      }, 200);
+    });
+  }
+  const retryEvents = ['pointerdown', 'keydown', 'touchstart'];
+  function retryStart() { startMusic().catch(() => {}); }
+  function removeRetry() {
+    retryEvents.forEach(ev => document.removeEventListener(ev, retryStart));
+  }
+  startMusic().catch(() => {
+    retryEvents.forEach(ev => document.addEventListener(ev, retryStart));
+  });
 
   if (savedChar) {
     wardrobeBox.style.display = "flex";

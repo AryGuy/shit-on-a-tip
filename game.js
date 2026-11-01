@@ -26,7 +26,7 @@ const storedChar = sessionStorage.getItem("playerCharacter");
 const currentChar = unlockedChars.includes(storedChar) ? storedChar : null;
 const SFX = "assets/soundfx/";
 
-// Reveal++ card: a special card (no score, no streak) that gives reveals when clapped
+// Reveal++ card: a special card (no score, but it does build the streak) that gives reveals when clapped
 const REVEAL_PLUS_CHANCE = 0.10;   // chance a (non-STD) card is a Reveal++ card
 const REVEAL_PLUS_GAIN   = 1;      // reveals gained on clap (passives can adjust via adjustRevealGain)
 
@@ -50,7 +50,6 @@ const deathSounds = {
   Dennis: SFX + "death_dennis.mp3"
 };
 
-const defaultDeathSound = SFX + "alert.mp3";
 const achievementList = {
   clappedDennis: {
     name: "I'M HYPERFOLDING IT",
@@ -112,6 +111,10 @@ const achievementList = {
     name: "You Alright Bro?",
     description: "Clap Lucy at 0 score"
   },
+  whereYouGoing: {
+    name: "Where You Going?",
+    description: "Game Over to Lucy at 0 score as Andy"
+  },
   tunnelVision: {
     name: "Tunnel Vision",
     description: "Game over from clapping Lucy or Sans even after revealing their card"
@@ -147,9 +150,14 @@ let runEnded = false;
 const highAtStart = Number(localStorage.getItem("highScore")) || 0;
 let maxReveals = hardModeActive ? 1 : 3;
 let revealUses = maxReveals;
-let achievements = JSON.parse(
-  localStorage.getItem("achievements") || "{}"
-);
+let achievements = {};
+try { achievements = JSON.parse(localStorage.getItem("achievements") || "{}") || {}; } catch {}
+
+// true while a passive animation (Sai's Glance) owns the round: no clapping, picking, revealing or shuffling
+let busy = false;
+let busyCount = 0;
+let achievementPopupTimeout = null;
+console.log("[game.js] build lock-v3 loaded");   // if you don't see this in the console, the browser is serving an old file
 
 let clapCounts = {};
 let streakSide = null;
@@ -158,7 +166,6 @@ let streakPopupTimeout = null;
 let streakTimeout = null;
 let streakBoosted = false;   // streak was set by a passive event, so it doesn't count toward Momentum
 
-const streakPopup = document.getElementById("streak-popup");
 window.addEventListener('load', () => {
   const overlay = document.getElementById('fade-in-overlay');
   requestAnimationFrame(() => requestAnimationFrame(() => {
@@ -195,6 +202,22 @@ function refreshStreakTimeout(ms = 2000) {
   }, ms);
 }
 
+// Adds one clap to the streak (continues it on the same lane, otherwise restarts at 1)
+function advanceStreak(slot) {
+  if (streakSide === slot || streakSide === ANY_LANE) {
+    streakCount++;
+    streakSide = slot;
+  } else {
+    streakSide = slot;
+    streakCount = 1;
+    streakBoosted = false;
+  }
+
+  refreshStreakTimeout();
+
+  if (streakCount >= 20 && !streakBoosted) unlockAchievement("momentum");
+}
+
 // Jump the streak to the highest tier. The next clap keeps it going on either lane.
 function setStreakToMax() {
   if (runEnded) return;
@@ -227,23 +250,24 @@ function showStreakPopup(count, multiplier) {
     </div>
   `;
 
-  popup.style.cssText += `
-    position: fixed;
-    top: 40%;
-    left: auto;
-    right: 5%;
-    z-index: 999999;
-    display: block;
-    visibility: visible;
-    opacity: 1;
-    pointer-events: none;
-    transform: translate(-50%, -50%) scale(1.5);
-    color: "#eeeeee",
-    font-family: 'Press Start 2P', monospace;
-    font-size: 42px;
-    text-align: center;
-    white-space: nowrap;
-    textShadow: "0 0 6px rgba(255,255,255,0.45)",  `;
+  // Plain style props instead of `cssText +=`: that string grew on every call and held
+  // JS-object-style junk (color: "#eee", textShadow: ...) that the browser silently dropped.
+  // Colour / font / shadow are left to style.css so the .kai-streak variant keeps working.
+  Object.assign(popup.style, {
+    position: "fixed",
+    top: "40%",
+    left: "auto",
+    right: "5%",
+    zIndex: "999999",
+    display: "block",
+    visibility: "visible",
+    opacity: "1",
+    pointerEvents: "none",
+    transform: "translate(-50%, -50%) scale(1.5)",
+    fontSize: "42px",
+    textAlign: "center",
+    whiteSpace: "nowrap"
+  });
 
   if (streakPopupTimeout) clearTimeout(streakPopupTimeout);
 
@@ -343,16 +367,6 @@ function consumeProtection() {
   return true;
 }
 
-function playDeathSound() {
-  const path = deathSounds[currentChar] || defaultDeathSound;
-  const deathAudio = new Audio(path);
-
-  deathAudio.volume = 0.8;
-  deathAudio.play().catch(() => {});
-
-  return deathAudio;
-}
-
 function getProfile(slot) {
   return slots[slot].profile;
 }
@@ -372,20 +386,41 @@ function highlightSlot(slot) {
 }
 
 function selectSlot(e, slot) {
-  if (!e.isTrusted || runEnded) return;
+  if (!e.isTrusted || runEnded || busy || hasClapped) return;
   playSound(clickSound);
 
   selectedSlot = slot;
-  clapBtn.disabled = false;
 
   highlightSlot(slot);
   updateRevealCount();
   hook("onSelect", slot);
 }
 
+// One place decides which controls are usable, so nothing can re-enable a button mid-animation
+function syncControls() {
+  const locked = runEnded || busy;
+  clapBtn.disabled   = locked || hasClapped || !selectedSlot;
+  revealBtn.disabled = locked || hasClapped || revealUses <= 0 || !selectedSlot;
+
+  // Grey the Clap button out for real (don't rely on style.css having a :disabled rule)
+  clapBtn.style.opacity       = clapBtn.disabled ? "0.35" : "";
+  clapBtn.style.filter        = clapBtn.disabled ? "grayscale(1)" : "";
+  clapBtn.style.cursor        = clapBtn.disabled ? "not-allowed" : "";
+  clapBtn.style.pointerEvents = busy ? "none" : "";   // nothing, not even a click event, gets through mid-roll
+  document.querySelectorAll("#slot-select button").forEach(b => { b.disabled = locked; });
+}
+
 function updateRevealCount() {
   revealCountDisplay.textContent = `Reveals left: ${revealUses}`;
-  revealBtn.disabled = revealUses <= 0 || !selectedSlot;
+  syncControls();
+}
+
+// Locks hold a counter, so Sai's passive and the stopwatch effect can each hold the round without
+// one releasing the other's lock early
+function setBusy(on) {
+  busyCount = Math.max(0, busyCount + (on ? 1 : -1));
+  busy = busyCount > 0;
+  updateRevealCount();
 }
 
 function updateScore() {
@@ -420,7 +455,8 @@ function unlockAchievement(id) {
 
   playSound(achievementSound);
 
-  setTimeout(() => popup.classList.remove("show"), 4000);
+  if (achievementPopupTimeout) clearTimeout(achievementPopupTimeout);
+  achievementPopupTimeout = setTimeout(() => popup.classList.remove("show"), 4000);
 }
 
 // Shows a card face: image cards (like Zhiynl's ammo) get an <img>, everything else gets text
@@ -471,6 +507,7 @@ function getRandomProfile(allowSpecial = true) {
 }
 
 function resetRound() {
+  let tries = 0;
   do {
     let specialUsed = false;   // special cards (ammo) can only show up in one slot per round
     activeSlots().forEach(name => {
@@ -478,19 +515,56 @@ function resetRound() {
       if (p.special) specialUsed = true;
       slots[name].profile = p;
     });
-  } while (slots.left.profile.isSTD && slots.right.profile.isSTD);
+  } while (slots.left.profile.isSTD && slots.right.profile.isSTD && ++tries < 100);
+
+  // paranoia: if a passive pushed the STD chance to 100% the loop above gives up, so force one safe card
+  if (slots.left.profile.isSTD && slots.right.profile.isSTD) {
+    const safe = profiles.filter(p => !p.isSTD);
+    slots.right.profile = safe[Math.floor(Math.random() * safe.length)];
+  }
+
+  revealedSlots = {};
+  revealedAs = {};
 
   activeSlots().forEach(name => {
     slots[name].div.textContent = "🗣❓";
+    slots[name].div.style.opacity = 1;
   });
 
   selectedSlot = null;
-  clapBtn.disabled = true;
   hasClapped = false;
 
   highlightSlot(null);
-  updateRevealCount();
+  updateRevealCount();      // also re-syncs the clap / reveal / slot buttons
   hook("onRoundStart");
+}
+
+// Andy + clapping Lucy at 0 score: full-screen image flash with a vine boom
+const ANDY_FLASH_IMG   = "assets/andy_lucy_flash.png";
+const ANDY_FLASH_SOUND = SFX + "vineboom.mp3";
+const ANDY_FLASH_HOLD_MS = 500;   // fully visible for this long, then it fades out
+const ANDY_FLASH_FADE_MS = 400;
+let andyLucyFlashPending = false;
+
+function playAndyLucyFlash() {
+  const img = document.createElement("img");
+  img.src = ANDY_FLASH_IMG;
+  img.alt = "";
+  img.style.cssText =
+    "position:fixed;inset:0;width:100vw;height:100vh;object-fit:cover;" +
+    "z-index:99999;pointer-events:none;opacity:1;";
+  document.body.appendChild(img);   // appears instantly, no transition in
+
+  const boom = new Audio(ANDY_FLASH_SOUND);
+  boom.play().catch(() => {});
+
+  setTimeout(() => {
+    img.style.transition = "opacity " + ANDY_FLASH_FADE_MS + "ms linear";
+    img.style.opacity = "0";
+  }, ANDY_FLASH_HOLD_MS);
+  setTimeout(() => img.remove(), ANDY_FLASH_HOLD_MS + ANDY_FLASH_FADE_MS + 50);
+
+  return ANDY_FLASH_HOLD_MS + ANDY_FLASH_FADE_MS;
 }
 
 // force = true skips Protection (used by Forfeit, which is a deliberate quit)
@@ -500,13 +574,20 @@ function gameOver(force = false) {
   runEnded = true;
   stopTimer();
 
+  const flashMs = andyLucyFlashPending ? playAndyLucyFlash() : 0;
+  andyLucyFlashPending = false;
+
   const shopMult  = window.shopAPI ? shopAPI.getMultiplier() : 1;
   const timerMult = getTimerMultiplier();
   // coins = score x timer multiplier x shop multiplier (the grant applies the shop multiplier itself)
-  const coinsEarned = grant ? grant.add(Math.floor(score * timerMult)) : 0;
-  const mult = Math.round(shopMult * timerMult * 100) / 100;   // combined, so score x mult ~ coins on the game over screen
+  const hardMult = hardModeActive ? 2 : 1;   // hard mode pays double
+  const coinsEarned = grant ? grant.add(Math.floor(score * timerMult * hardMult)) : 0;
+  const mult = Math.round(shopMult * timerMult * hardMult * 100) / 100;   // combined, so score x mult ~ coins on the game over screen
 
+  let redirected = false;
   const redirectNow = () => {
+    if (redirected) return;   // death sound "ended" and the 1.5s fallback timer can both fire
+    redirected = true;
     sessionStorage.setItem("lastScore", score);
     sessionStorage.setItem("lastCoins", coinsEarned);
     sessionStorage.setItem("lastMult", mult);
@@ -517,7 +598,7 @@ function gameOver(force = false) {
 
     setTimeout(() => {
       window.location.href = "gameover.html";
-    }, 600);
+    }, Math.max(600, flashMs + 100));
   };
 
   const deathPath = deathSounds[currentChar];
@@ -530,10 +611,7 @@ function gameOver(force = false) {
     deathAudio.addEventListener("ended", redirectNow);
     setTimeout(redirectNow, 1500);
   } else {
-    try {
-      alertSound.play();
-    } catch {}
-
+    playSound(alertSound);
     redirectNow();
   }
 }
@@ -596,25 +674,13 @@ function landStopwatchRandomly() {
   addTime(Math.floor(Math.random() * 21) + 5);
 }
 
-window.addEventListener("DOMContentLoaded", () => {
-  const forfeitBtn = document.getElementById("forfeit-btn");
-  const clickSfx = document.getElementById("click-sfx");
-
-  if (!forfeitBtn) return;
-
+const forfeitBtn = document.getElementById("forfeit-btn");
+if (forfeitBtn) {
   forfeitBtn.addEventListener("click", () => {
-    if (clickSfx) {
-      clickSfx.currentTime = 0;
-      clickSfx.play().catch(() => {});
-    }
-
-    if (typeof gameOver === "function") {
-      gameOver(true);
-    } else {
-      window.location.href = "gameover.html";
-    }
+    playSound(clickSound);
+    gameOver(true);   // deliberate quit: skips Protection
   });
-});
+}
 
 document.getElementById("choose-left").addEventListener("click", (e) => selectSlot(e, "left"));
 document.getElementById("choose-right").addEventListener("click", (e) => selectSlot(e, "right"));
@@ -623,7 +689,7 @@ let revealedSlots = {};
 let revealedAs = {};   // slot -> name of the card the player actually saw when revealing it
 
 revealBtn.addEventListener("click", (e) => {
-  if (!e.isTrusted || runEnded) return;
+  if (!e.isTrusted || runEnded || busy || hasClapped) return;
   if (!selectedSlot || revealUses <= 0) return;
   if (revealedSlots[selectedSlot]) return;
 
@@ -644,32 +710,43 @@ revealBtn.addEventListener("click", (e) => {
 });
 
 let stopwatchFastAnim = null;
+let stopwatchFastEnd = null;
+let stopwatchLock = false;
 
-// purely visual: the clock text spins up for a moment, then snaps back to the real time
+// purely visual: the clock text spins forward from the real time for a moment, then snaps back
 function animateStopwatchFast(duration = 1000, speed = 50) {
   if (!timerDisplay) return;
   if (stopwatchFastAnim) clearInterval(stopwatchFastAnim);
+  if (stopwatchFastEnd)  clearTimeout(stopwatchFastEnd);   // an old end-timer used to cut a newer animation short
 
   timerFxActive = true;
-  let fakeSeconds = 0;
+  if (!stopwatchLock) { stopwatchLock = true; setBusy(true); }   // no clapping until the effect is completely over
+  let fakeSeconds = Math.floor(timerSeconds);
 
   stopwatchFastAnim = setInterval(() => {
     fakeSeconds += speed;
-    timerDisplay.textContent = formatTime(Math.floor(fakeSeconds));
+    timerDisplay.textContent = formatTime(fakeSeconds);
   }, 50);
 
-  setTimeout(() => {
+  stopwatchFastEnd = setTimeout(() => {
     clearInterval(stopwatchFastAnim);
     stopwatchFastAnim = null;
+    stopwatchFastEnd = null;
     timerFxActive = false;
     updateTimer();
+    if (stopwatchLock) { stopwatchLock = false; setBusy(false); }
   }, duration);
 }
 
 clapBtn.addEventListener("click", (e) => {
-  if (!e.isTrusted || runEnded || hasClapped || !selectedSlot) return;
+  if (!e.isTrusted || runEnded || busy || hasClapped || !selectedSlot) return;
+
+  // safety net: a slot should never be empty, but if a passive ever leaves one that way,
+  // deal a fresh card instead of throwing halfway through the clap and bricking the run
+  if (!getProfile(selectedSlot)) slots[selectedSlot].profile = getRandomProfile(false);
 
   hasClapped = true;
+  syncControls();   // grey out Clap / Reveal straight away
   hook("onClapStart");
   playSound(clapSound);
 
@@ -705,6 +782,13 @@ clapBtn.addEventListener("click", (e) => {
       const adjustedGain = hook("adjustRevealGain", c, gain);
       if (Number.isFinite(adjustedGain)) gain = adjustedGain;
       g.addReveals(gain);
+
+      // Reveal++ gives no score, but it still counts toward the streak
+      advanceStreak(clappedSlot);
+      const sm = currentStreakMultiplier(streakCount, c);
+      if (getStreakTiers().some(([need]) => need === streakCount)) {
+        showStreakPopup(streakCount, sm);
+      }
     }
 
     hook("onSpecialClap", c);
@@ -736,6 +820,10 @@ clapBtn.addEventListener("click", (e) => {
         score === 0
       ) {
         sessionStorage.setItem("badEnding", "true");
+        if (chosen.name === "Lucy" && currentChar === "Andy") {
+          andyLucyFlashPending = true;
+          unlockAchievement("whereYouGoing");
+        }
       } else {
         sessionStorage.removeItem("badEnding");
       }
@@ -745,18 +833,7 @@ clapBtn.addEventListener("click", (e) => {
     }
   }
 
-  if (streakSide === clappedSlot || streakSide === ANY_LANE) {
-    streakCount++;
-    streakSide = clappedSlot;
-  } else {
-    streakSide = clappedSlot;
-    streakCount = 1;
-    streakBoosted = false;
-  }
-
-  refreshStreakTimeout();
-
-  if (streakCount >= 20 && !streakBoosted) unlockAchievement("momentum");
+  advanceStreak(clappedSlot);
 
   let basePoints = isTarget ? 2 : 1;
   const adjusted = hook("adjustPoints", c, basePoints);
@@ -789,29 +866,18 @@ clapBtn.addEventListener("click", (e) => {
 });
 
 function finishRound(clappedSlot) {
-  setTimeout(() => {
-    activeSlots()
-      .filter(slot => slot !== clappedSlot)
-      .forEach(slot => {
-        const div = getDiv(slot);
-        showCard(div, getProfile(slot));
-        div.style.opacity = 0.5;
-      });
-  });
-
-  setTimeout(() => {
-    resetRound();
-
-    revealedSlots = {
-      left: false,
-      right: false,
-      third: false
-    };
-    revealedAs = {};
-
-    activeSlots().forEach(slot => {
-      getDiv(slot).style.opacity = 1;
+  // show the card(s) the player didn't clap, dimmed
+  activeSlots()
+    .filter(slot => slot !== clappedSlot)
+    .forEach(slot => {
+      const div = getDiv(slot);
+      showCard(div, getProfile(slot));
+      div.style.opacity = 0.5;
     });
+
+  setTimeout(() => {
+    if (runEnded) return;
+    resetRound();
   }, 600);
 }
 
@@ -887,11 +953,25 @@ const g = {
   selectSlot,
   swapSlots,
   getSelected()   { return selectedSlot; },
-  isRoundLocked() { return runEnded || hasClapped; },
+  isRoundLocked() { return runEnded || hasClapped || busy; },
+  isBusy()        { return busy; },
+  setBusy,
   isRunEnded()    { return runEnded; },
   addSlot(name, div) { slots[name] = { div, profile: null }; },
-  setProfile(name, profile) { slots[name].profile = profile; },
-  markRevealed(...names) { names.forEach(n => { revealedSlots[n] = true; }); },
+  setProfile(name, profile) {
+    if (!slots[name] || !profile) return;   // never let a passive put an empty card in a lane
+    slots[name].profile = profile;
+  },
+  // marks lanes as seen by the player (and remembers which card they saw, for Tunnel Vision)
+  markRevealed(...names) {
+    names.forEach(n => {
+      if (!slots[n] || !slots[n].profile) return;
+      revealedSlots[n] = true;
+      revealedAs[n] = slots[n].profile.name;
+    });
+  },
+  showCard,
+  refreshFace,
 
   addScore(n) {
     score = Math.max(0, score + n);

@@ -295,28 +295,20 @@
   <script src="coinCore.js"></script>
 
   <script>
-    // coin reward per difficulty tier (easy = bronze strip, medium = silver, hard = gold, secret = ruby)
     const REWARDS = { easy: 100, medium: 500, hard: 1000, secret: 5000 };
-
-    // display order inside each tab: bronze, silver, gold, ruby
     const TIER_ORDER = ["easy", "medium", "hard", "secret"];
-
-    // coinCore only hands out the grant while the page is loading, so grab it now
-    // and keep it around for the CLAIM buttons.
     const coinGrant = (window.shopAPI && shopAPI.claimGrant) ? shopAPI.claimGrant() : null;
-
-    // tab: general | ingame | clap     diff: easy | medium | hard | secret
-    // Rows are auto-sorted by tier (bronze > silver > gold > ruby), so order here only matters within a tier.
     const defaultAchievements = {
       // GENERAL
       preIndividuals:   { tab: "general", diff: "easy", name: "Pre-Individuals", description: "Own 3 characters" },
       boomboxEasterEgg: { tab: "general", diff: "easy", name: "#SAVEEUROPE", description: "If our love is tragedy, why are you my remedy?" },
       tamperCutscene:   { tab: "general", diff: "hard", name: "21st Century Shoplifter", description: "You've crossed the line" },
-      kissMyBoot:       { tab: "general", diff: "secret", name: "Kiss My Boot", description: "Cleared the backyard." },
+      kissMyBoot:       { tab: "general", diff: "secret", name: "Kiss My Boot", description: "Cleared the backyard" },
 
       // IN-GAME
       clappedSansZero:  { tab: "ingame", diff: "easy", name: "Pre Nut Clarity", description: "Game Over to Sans at 0 score" },
       clappedLucyZero:  { tab: "ingame", diff: "easy", name: "You Alright Bro?", description: "Game Over to Lucy at 0 score" },
+      whereYouGoing:    { tab: "ingame", diff: "easy", name: "Where You Going?", description: "Game Over to Lucy at 0 score as Andy" },
       tunnelVision:     { tab: "ingame", diff: "easy", name: "Tunnel Vision", description: "Game over from clapping Lucy or Sans even after revealing their card" },
       againstallodds:   { tab: "ingame", diff: "hard", name: "Against All Odds", description: "Die from a heart attack" },
       momentum:         { tab: "ingame", diff: "medium", name: "Momentum", description: "Reach 20x streak" },
@@ -339,7 +331,6 @@
       clappedSans:    { tab: "clap", diff: "hard", name: "Stinking, Disgusting, Walking Hazard", description: "Clap Sans 10 times in one game" }
     };
 
-    // keys of achievements whose coins have already been claimed (signed, so it can't be wiped to farm coins)
     let claimedKeys = [];
     let claimAllowed = !!coinGrant;
 
@@ -371,12 +362,11 @@
       const saved = JSON.parse(localStorage.getItem("achievements") || "{}");
       if (!ach || !saved[key]) return; // can't claim what isn't unlocked
 
-      // mark as claimed first so a double click can't pay twice
       claimedKeys.push(key);
       coinGrant.store("achRewarded", claimedKeys);
 
       const reward = REWARDS[ach.diff];
-      coinGrant.add(reward, true); // flat, ignores shop multipliers
+      coinGrant.add(reward, true); 
       showToast(`+${reward} 🪙`);
 
       const sfx = document.getElementById("click-sfx");
@@ -393,17 +383,13 @@
         if (r.state === "ok" && Array.isArray(r.value)) {
           claimedKeys = r.value;
         } else if (r.state === "tampered") {
-          // fail closed: mark everything unlocked as claimed, give nothing
           claimedKeys = Object.keys(defaultAchievements).filter(k => saved[k]);
           claimAllowed = false;
         } else {
-          // first run of the signed version: import the old plain list if there was one
           try { claimedKeys = JSON.parse(localStorage.getItem("achievementsRewarded") || "[]"); } catch {}
         }
       }
 
-      // auto-arrange by tier: bronze -> silver -> gold -> ruby
-      // (sort is stable, so achievements keep their written order within a tier)
       const sortedKeys = Object.keys(defaultAchievements).sort(
         (a, b) => TIER_ORDER.indexOf(defaultAchievements[a].diff) - TIER_ORDER.indexOf(defaultAchievements[b].diff)
       );

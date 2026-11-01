@@ -227,20 +227,48 @@ const characterPassives = (() => {
   const SAI_REVEAL_PLUS_MULT = 2;
   const SAI_TIME_SPEED       = 3;   // the timer (and so the timer multiplier) runs twice as fast
 
+  const SAI_GLANCE_ROLL_DELAY_MS = 700;    // before the cards start flickering
+  const SAI_GLANCE_CYCLE_MS      = 100;    // one flicker
+  const SAI_GLANCE_CYCLES        = 10;
+  const SAI_GLANCE_FX_MS         = 3000;   // the whole fast-forward effect; the round stays locked until it's over
+
+  // Pick `count` fine shyts for the roll. Distinct when possible. If the player has fewer fine shyts
+  // than lanes (or none at all) it reuses / falls back to any normal card, so a lane is NEVER left
+  // empty. (An empty lane was what bricked the game: undefined profile -> crash on the next clap.)
+  function saiRollFineShyts(g, count) {
+    const targets = g.chosenTargets
+      .map(name => g.profiles.find(p => p.name === name))
+      .filter(p => p && !p.isSTD);
+    const source = targets.length ? targets : g.profiles.filter(p => !p.isSTD);
+
+    const bag = [];
+    const picked = [];
+    while (picked.length < count) {
+      if (!bag.length) bag.push(...source);
+      picked.push(bag.splice(Math.floor(Math.random() * bag.length), 1)[0]);
+    }
+    return picked;
+  }
+
   function saiGlance(g, selectedSlot) {
+    if (!selectedSlot || g.isBusy() || g.isRunEnded()) return;
+
     const { left, right } = g.slots;
-    if (!selectedSlot) return;
 
-    left.div.textContent  = left.profile.name;
-    right.div.textContent = right.profile.name;
+    g.showCard(left.div,  left.profile);
+    g.showCard(right.div, right.profile);
 
+    // no Lucy/Sans: just a plain look at both cards
     if (!left.profile.isSTD && !right.profile.isSTD) {
       g.addReveals(-1);
       g.markRevealed("left", "right");
       return;
     }
 
-    g.revealBtn.disabled = true;
+    // Lucy/Sans spotted: lock the round (no clapping / picking / revealing) until the effect is over.
+    // Clapping mid-roll used to resolve the OLD cards, then the roll finished and overwrote the NEW round.
+    g.setBusy(true);
+    g.addReveals(-1);
 
     const goFast = document.getElementById("gofast-sfx");
     if (goFast) {
@@ -248,42 +276,40 @@ const characterPassives = (() => {
       goFast.play().catch(() => {});
     }
 
-    g.animateStopwatchFast(3000, 50);
+    g.animateStopwatchFast(SAI_GLANCE_FX_MS, 50);
+
+    const rollEnd = SAI_GLANCE_ROLL_DELAY_MS + SAI_GLANCE_CYCLES * SAI_GLANCE_CYCLE_MS;
+    setTimeout(() => g.setBusy(false), Math.max(SAI_GLANCE_FX_MS, rollEnd) + 50);
 
     setTimeout(() => {
-      const cycleDuration = 100;
-      const cycleCount = 10;
-      let currentCycle = 0;
+      if (g.isRunEnded()) return;
 
+      let currentCycle = 0;
       const interval = setInterval(() => {
+        if (g.isRunEnded()) { clearInterval(interval); return; }
+
         left.div.textContent  = g.profiles[Math.floor(Math.random() * g.profiles.length)].name;
         right.div.textContent = g.profiles[Math.floor(Math.random() * g.profiles.length)].name;
 
         [left.div, right.div].forEach(div => {
           div.classList.add("card-flash");
-          setTimeout(() => div.classList.remove("card-flash"), cycleDuration - 10);
+          setTimeout(() => div.classList.remove("card-flash"), SAI_GLANCE_CYCLE_MS - 10);
         });
 
-        currentCycle++;
-        if (currentCycle < cycleCount) return;
-
+        if (++currentCycle < SAI_GLANCE_CYCLES) return;
         clearInterval(interval);
 
-        const pool = [...g.chosenTargets];
-        const pick = () => pool.splice(Math.floor(Math.random() * pool.length), 1)[0];
-
-        g.setProfile("left",  g.profiles.find(p => p.name === pick()));
-        g.setProfile("right", g.profiles.find(p => p.name === pick()));
-
-        left.div.textContent  = left.profile.name;
-        right.div.textContent = right.profile.name;
+        // both lanes become fine shyts, then are marked as seen
+        const [l, r] = saiRollFineShyts(g, 2);
+        g.setProfile("left",  l);
+        g.setProfile("right", r);
+        g.showCard(left.div,  left.profile);
+        g.showCard(right.div, right.profile);
 
         g.landStopwatchRandomly();
-        g.revealBtn.disabled = false;
         g.markRevealed("left", "right");
-        g.addReveals(-1);
-      }, cycleDuration);
-    }, 700);
+      }, SAI_GLANCE_CYCLE_MS);
+    }, SAI_GLANCE_ROLL_DELAY_MS);
   }
 
   const Sai = {
@@ -328,14 +354,23 @@ const characterPassives = (() => {
   const KJ_IGNORE_SCORE = 5;   // score for letting a butterfly fly away
   const KJ_TIME_BONUS     = 10;     // seconds added by the "time" event
   const KJ_JACKPOT_CHANCE = 0.01;   // per butterfly click
+  const KJ_DEATH_CHANCE   = 0.01;   // when the "AAUGGGHHH" event is rolled
   const KJ_JACKPOT_SCORE  = 1000;
 
+  // Turns one lane into Lucy/Sans and glows it. Only lanes where that can't produce a double-STD round.
   function warnNextCard(g) {
-    if (nextCardWarning) return;
+    if (nextCardWarning || g.isRoundLocked()) return;
 
-    warnedSlot = Math.random() < 0.5 ? "left" : "right";
+    const other = { left: "right", right: "left" };
+    const lanes = ["left", "right"].filter(slot =>
+      !g.slots[slot].profile.isSTD && !g.slots[other[slot]].profile.isSTD
+    );
+    if (!lanes.length) return;
+
+    warnedSlot = lanes[Math.floor(Math.random() * lanes.length)];
     const stdName = Math.random() < 0.5 ? "Lucy" : "Sans";
     g.setProfile(warnedSlot, g.profiles.find(p => p.name === stdName));
+    g.refreshFace(warnedSlot);   // if the player had already revealed this lane, don't leave the old card showing
 
     nextCardWarning = true;
     const div = g.slots[warnedSlot].div;
@@ -368,6 +403,8 @@ const characterPassives = (() => {
   }
 
   function kjRandomEvent(g) {
+    if (g.isRunEnded()) return;
+
     if (Math.random() < KJ_JACKPOT_CHANCE) {
       g.addScore(KJ_JACKPOT_SCORE);
       showFloatingMessage("JACKPOT! +" + KJ_JACKPOT_SCORE + " Score!!!");
@@ -387,10 +424,12 @@ const characterPassives = (() => {
       () => { warnNextCard(g);        return "Watch out for your next card!"; },
       () => { for (let i = 0; i < 3; i++) spawnButterfly(g); return "More butterflies!"; },
       () => {
-        if (Math.random() < 0.01) {
+        if (Math.random() < KJ_DEATH_CHANCE) {
           g.shake(true);
           sessionStorage.setItem("kjDeath", "true");
           g.gameOver();
+          // Protection can eat this death; don't leave the flag behind for some later, unrelated game over
+          if (!g.isRunEnded()) sessionStorage.removeItem("kjDeath");
         }
         return "AAUGGGHHH";
       }
@@ -401,6 +440,7 @@ const characterPassives = (() => {
   }
 
   function spawnButterfly(g) {
+    if (g.isRunEnded()) return;
     const SIZE = 80;
     const el = document.createElement("div");
     el.className = "butterfly";
@@ -445,8 +485,10 @@ const characterPassives = (() => {
     })();
 
     el.addEventListener("click", () => {
-      new Audio(SFX_DIR + "butterflytap.mp3").play().catch(() => {});
+      if (!alive) return;
       remove();
+      if (g.isRunEnded()) return;
+      new Audio(SFX_DIR + "butterflytap.mp3").play().catch(() => {});
       kjRandomEvent(g);
     });
 
@@ -462,15 +504,21 @@ const characterPassives = (() => {
 
   const Kj = {
     onInit(g) {
-      setInterval(() => spawnButterfly(g), 10000 + Math.random() * 10000);
+      // a fresh random delay every time (setInterval picked ONE delay and reused it forever)
+      const schedule = () => setTimeout(() => {
+        if (g.isRunEnded()) return;
+        spawnButterfly(g);
+        schedule();
+      }, 10000 + Math.random() * 10000);
+      schedule();
     },
 
-    beforeReveal(g, slot, profile) {
-      if (nextCardWarning && slot === warnedSlot) {
-        profile.isSTD = true;
-        nextCardWarning = false;
-        warnedSlot = null;
-      }
+    // The old beforeReveal flipped isSTD on the SHARED profile object (e.g. Matt), so that person
+    // stayed Lucy/Sans-like for the rest of the run. The warned lane already holds a real Lucy/Sans,
+    // so nothing needs mutating, we just forget the warning when the round changes.
+    onRoundStart() {
+      nextCardWarning = false;
+      warnedSlot = null;
     }
   };
 

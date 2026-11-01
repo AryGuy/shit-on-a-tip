@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+  <meta charset="UTF-8">
   <script>
     // Zhiynl does not shop. He goes to the empty shop.
     if (sessionStorage.getItem("playerCharacter") === "Zhiynl") location.replace("emptyshop.html");
@@ -13,7 +14,6 @@
     }
   } catch (e) {}
 </script>
-  <meta charset="UTF-8">
   <title>It Yo Boy Zhiy Shop</title>
   <link rel="stylesheet" href="shop.css">
   <link href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap" rel="stylesheet">
@@ -110,7 +110,7 @@
           <li><button class="buy-item" data-cost="500" data-type="character" data-id="Kj" data-description='"YOU FUCKING MMMMMOOOOONNNNNNNKKKKKKKEEEEYYYYYY"'>Kj - 500 coins</button></li>
           <li><button class="buy-item" data-cost="500" data-type="character" data-id="Win" data-description='Go to sleeeeep'>Win - 500 coins</button></li>
           <li><button class="buy-item" data-cost="500" data-type="character" data-id="Dennis" data-description='"Yo rq bro I need u to get a gender reassignment plz man its urgent"'>Dennis - 500 coins</button></li>
-          <li><button class="buy-item" data-cost="500" data-type="character" data-id="Kai" data-description='Heavy like a Brinks truck'>Kai Furukawa - 500 coins</button></li>
+          <li><button class="buy-item" data-cost="500" data-type="character" data-id="Kai" data-name="Kai Furukawa" data-description='Heavy like a Brinks truck'>Kai Furukawa - 500 coins</button></li>
 
 
         </ul>
@@ -121,7 +121,7 @@
         <ul>
           <li><button class="buy-item" data-cost="200" data-type="misc" data-id="Hard Mode" data-description="Self explanatory">Hard Mode - 200 Coins</button></li>
           <li><button class="buy-item" data-cost="2500" data-type="misc" data-id="Golden Ticket" data-description="No need to thank me">Golden Ticket - 2500 coins</button></li>
-          <li><button class="buy-item" data-cost="300" data-type="misc" data-id="Protection" data-description="Negates your next game over">Condom - 300 coins</button></li>
+          <li><button class="buy-item" data-cost="300" data-type="misc" data-id="Protection" data-name="Condom" data-description="Negates your next game over">Condom - 300 coins</button></li>
         </ul>
       </div>
     </div>

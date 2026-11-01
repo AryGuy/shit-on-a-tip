@@ -136,6 +136,8 @@ function playOneShot(src) {
   new Audio(src).play().catch(() => {});
 }
 
+let achievementPopupTimeout = null;
+
 function unlockAchievement(key, title) {
   const achievements = store.getJSON("achievements", {});
   if (achievements[key]) return;
@@ -147,7 +149,9 @@ function unlockAchievement(key, title) {
   if (popup) {
     popup.innerHTML = `🏆 Achievement Unlocked: ${title}`;
     popup.classList.add("show");
-    setTimeout(() => popup.classList.remove("show"), 4000);
+    // one timer: a second achievement used to be hidden early by the first one's timeout
+    if (achievementPopupTimeout) clearTimeout(achievementPopupTimeout);
+    achievementPopupTimeout = setTimeout(() => popup.classList.remove("show"), 4000);
   }
   playSfx("achievement-sfx");
 }
@@ -239,8 +243,19 @@ const talkBtn    = $("talk-btn");
 const convoBox   = $("conversation-box");
 
 let typeWriterInterval;
+let typeRun = 0;                  // bumped whenever new dialogue takes over, so stale timers can tell they were interrupted
+let conversationPlaying = false;  // a Speak option is mid-reply
+let speaking = false;             // Zhiynl is mid-sentence (or between lines of a multi-line reply)
+let sceneActive = false;          // a scripted scene (backyard / goto) is running: nothing may interrupt it
 
-function typeWriterEffect(text, element, delay = TYPEWRITER_DELAY, callback) {
+function cancelTyping() {
+  clearInterval(typeWriterInterval);
+  typeRun++;
+  conversationPlaying = false;
+  speaking = false;
+}
+
+function startTyping(text, element, delay, callback) {
   clearInterval(typeWriterInterval);
   let i = 0;
   element.textContent = "";
@@ -254,14 +269,29 @@ function typeWriterEffect(text, element, delay = TYPEWRITER_DELAY, callback) {
   }, delay);
 }
 
+// Types one line and takes over the dialogue box (cancels anything still being typed)
+function typeWriterEffect(text, element, delay = TYPEWRITER_DELAY, callback) {
+  cancelTyping();
+  speaking = true;
+  startTyping(text, element, delay, () => {
+    speaking = false;
+    if (callback) callback();
+  });
+}
+
 function typeLines(lines, element, { gap = 600, finalGap = gap, onDone } = {}) {
+  cancelTyping();
+  speaking = true;                 // stays true through the gaps between lines
+  const run = typeRun;
   let i = 0;
   const next = () => {
+    if (run !== typeRun) return;   // something else started talking: drop the rest of these lines
     if (i >= lines.length) {
+      speaking = false;
       if (onDone) onDone();
       return;
     }
-    typeWriterEffect(lines[i], element, TYPEWRITER_DELAY, () => {
+    startTyping(lines[i], element, TYPEWRITER_DELAY, () => {
       i++;
       setTimeout(next, i >= lines.length ? finalGap : gap);
     });
@@ -276,6 +306,8 @@ function setRandomSprite() {
 }
 
 sprite.addEventListener("click", () => {
+  if (sceneActive || conversationPlaying || speaking) return;   // poking him never cuts off what he's saying
+  cancelTyping();   // otherwise the typewriter kept appending to the insult
   dialogueEl.textContent = pickRandom(SPRITE_INSULTS);
   sprite.classList.add("squish");
   setTimeout(() => sprite.classList.remove("squish"), 150);
@@ -283,11 +315,12 @@ sprite.addEventListener("click", () => {
 });
 
 talkBtn.addEventListener("click", () => {
+  if (sceneActive || conversationPlaying) return;
   const isOpen = getComputedStyle(convoBox).display !== "none";
   convoBox.style.display = isOpen ? "none" : "block";
 });
 
-/* ---- Backyard intro: shop music dies, DontStop.m4a slowly fades in, Zhiynl walks off ---- */
+/* ---- Backyard intro: shop music dies, caravan.mp3 slowly fades in, Zhiynl walks off ---- */
 
 const CARAVAN_VOL      = 0.35;  // matches MUSIC_VOL in dogkilling.html
 const SHOP_FADE_OUT_MS = 1200;
@@ -345,22 +378,28 @@ function backyardWalkOff(url) {
 
 document.querySelectorAll(".dialogue-option").forEach((btn) => {
   btn.addEventListener("click", () => {
+    if (sceneActive || conversationPlaying) return;   // no overlapping conversations
+
     const replies = btn.dataset.replies
       ? JSON.parse(btn.dataset.replies)
       : [btn.dataset.reply];
 
-    convoBox.style.display = "none";
     const isBackyard = btn.id === "zhiynl-secret";
+    if (isBackyard || btn.dataset.goto) sceneActive = true;   // we're leaving: nothing may interrupt
+
+    convoBox.style.display = "none";
     if (isBackyard) startCaravanCrossfade();
     typeLines(replies, dialogueEl, {
       gap: 600,
       finalGap: 1000,
       onDone: () => {
+        conversationPlaying = false;
         if (isBackyard) { backyardWalkOff(btn.dataset.goto); return; }
         if (btn.dataset.goto) { fadeTo(btn.dataset.goto); return; }
         convoBox.style.display = "block";
       },
     });
+    conversationPlaying = true;   // after typeLines, which resets it
   });
 });
 
@@ -405,6 +444,7 @@ muteBtn.addEventListener("click", () => {
   musicMuted = !musicMuted;
   shopMusic.muted = musicMuted;
   if (window.euroMusic) window.euroMusic.muted = musicMuted;
+  if (caravanMusic) caravanMusic.muted = musicMuted;
   store.setJSON("musicMuted", musicMuted);
   renderMuteButton();
 });
@@ -469,11 +509,16 @@ function findBuyButton(itemId) {
   );
 }
 
+// Name shown on the button: data-name if the HTML sets one (e.g. "Condom" for Protection), else the item id
+function displayName(button, itemId) {
+  return (button && button.dataset.name) || itemId;
+}
+
 function markOwned(button, itemId, type) {
   if (!button) return;
   button.disabled = true;
   const label = (ITEMS[itemId] && ITEMS[itemId].ownedLabel) || OWNED_LABEL[type];
-  button.textContent = `${itemId} - ${label}`;
+  button.textContent = `${displayName(button, itemId)} - ${label}`;
   button.style.opacity = "0.5";
   button.style.cursor = "not-allowed";
 }
@@ -495,7 +540,7 @@ function refreshPrices() {
     if (isOwned(itemId, item)) return; // leave owned buttons alone
     const cost = getItemCost(itemId, item);
     btn.dataset.cost = cost;
-    btn.textContent = `${itemId} - ${cost} coins`;
+    btn.textContent = `${displayName(btn, itemId)} - ${cost} coins`;
   });
 }
 
@@ -504,7 +549,7 @@ document.querySelectorAll(".buy-item").forEach((button) => {
 });
 
 function guardedBuy(ev) {
-  if (!ev.isTrusted) return;
+  if (!ev.isTrusted || sceneActive) return;
 
   const button = ev.currentTarget;
   const itemId = (button.dataset.id || button.textContent.split(" - ")[0]).trim();
@@ -549,7 +594,9 @@ function handleInsufficientFunds() {
   typeLines(BROKE_SEQUENCE, dialogueEl, {
     gap: 500,
     onDone: () => {
+      const run = typeRun;
       setTimeout(() => {
+        if (run !== typeRun) return;   // the player bought / clicked something in the meantime
         typeWriterEffect(pickRandom(BROKE_FOLLOWUPS), dialogueEl, TYPEWRITER_DELAY);
       }, 1000);
     },
