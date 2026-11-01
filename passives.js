@@ -551,7 +551,7 @@ const characterPassives = (() => {
   //           (no game over). 1 ammo max. Clap an ammo card to reload.
   // ===========================================================================
   const ZHIYNL_MAX_AMMO         = 1;
-  const ZHIYNL_AMMO_COST         = 5;      // score lost when clapping an ammo card
+  const ZHIYNL_AMMO_COST         = 0;      // score lost when clapping an ammo card (0 = free reload)
   const ZHIYNL_AMMO_CARD_CHANCE = 0.14;   // chance a (non-STD) card is an ammo card
 
   const SHELL_IMG = IMG_DIR + "shotgunshell.png";
